@@ -1,12 +1,6 @@
-// MediaPipeのモック
-jest.mock('@mediapipe/pose', () => ({
-  Pose: jest.fn().mockImplementation(() => ({
-    setOptions: jest.fn(),
-    onResults: jest.fn(),
-    send: jest.fn().mockResolvedValue(undefined),
-    initialize: jest.fn().mockResolvedValue(undefined),
-  })),
-  POSE_CONNECTIONS: [],
+// MediaPipe wrapper のモック（CDN ロードを使用するためブラウザ外では動かない）
+jest.mock('@/lib/mediapipe', () => ({
+  analyzeVideo: jest.fn().mockResolvedValue([]),
 }))
 
 // html2canvasのモック

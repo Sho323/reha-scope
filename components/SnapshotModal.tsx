@@ -13,6 +13,7 @@ interface SnapshotModalProps {
   afterData: FrameData[]
   beforeLandmarks: PoseLandmarks[]
   afterLandmarks: PoseLandmarks[]
+  plane?: 'frontal' | 'sagittal'
   onClose: () => void
 }
 
@@ -23,6 +24,7 @@ export default function SnapshotModal({
   afterData,
   beforeLandmarks,
   afterLandmarks,
+  plane = 'sagittal',
   onClose,
 }: SnapshotModalProps) {
   const [beforeFrame, setBeforeFrame] = useState(0)
@@ -30,16 +32,24 @@ export default function SnapshotModal({
   const beforeVideoRef = useRef<HTMLVideoElement>(null)
   const afterVideoRef = useRef<HTMLVideoElement>(null)
   const [videoDims, setVideoDims] = useState({ w: 320, h: 180 })
+  const [videoNaturalDims, setVideoNaturalDims] = useState({ w: 0, h: 0 })
 
   useEffect(() => {
-    if (beforeVideoRef.current) {
-      const v = beforeVideoRef.current
-      v.onloadedmetadata = () => {
-        const w = v.clientWidth || 320
-        const h = v.clientHeight || 180
-        setVideoDims({ w, h })
-      }
+    const v = beforeVideoRef.current
+    if (!v) return
+    const measure = () => {
+      // レイアウト確定後にコンテナサイズを取得
+      requestAnimationFrame(() => {
+        const rect = v.getBoundingClientRect()
+        if (rect.width > 0) setVideoDims({ w: rect.width, h: rect.height })
+      })
+      // 動画の実ピクセルサイズ（レターボックス補正用）
+      setVideoNaturalDims({ w: v.videoWidth, h: v.videoHeight })
     }
+    v.addEventListener('loadedmetadata', measure)
+    // すでにメタデータが読み込まれている場合
+    if (v.readyState >= 1) measure()
+    return () => v.removeEventListener('loadedmetadata', measure)
   }, [])
 
   const seekTo = (video: HTMLVideoElement | null, frame: number, fps = 15) => {
@@ -80,6 +90,9 @@ export default function SnapshotModal({
                   landmarks={beforeLandmarks[beforeFrame] ?? null}
                   width={videoDims.w}
                   height={videoDims.h}
+                  videoNaturalWidth={videoNaturalDims.w}
+                  videoNaturalHeight={videoNaturalDims.h}
+                  plane={plane}
                 />
               </div>
               <input
@@ -110,6 +123,9 @@ export default function SnapshotModal({
                   landmarks={afterLandmarks[afterFrame] ?? null}
                   width={videoDims.w}
                   height={videoDims.h}
+                  videoNaturalWidth={videoNaturalDims.w}
+                  videoNaturalHeight={videoNaturalDims.h}
+                  plane={plane}
                 />
               </div>
               <input
@@ -133,6 +149,7 @@ export default function SnapshotModal({
             <AngleTable
               before={beforeData[beforeFrame] ?? null}
               after={afterData[afterFrame] ?? null}
+              plane={plane}
             />
           </div>
         </div>

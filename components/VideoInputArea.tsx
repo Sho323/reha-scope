@@ -7,6 +7,8 @@ interface VideoInputAreaProps {
   borderColor: 'blue' | 'orange'
   onVideoReady: (url: string) => void
   videoUrl?: string
+  /** ボタンのみ表示（プレビュー・ラベル非表示） */
+  compact?: boolean
 }
 
 export default function VideoInputArea({
@@ -14,6 +16,7 @@ export default function VideoInputArea({
   borderColor,
   onVideoReady,
   videoUrl,
+  compact = false,
 }: VideoInputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [recording, setRecording] = useState(false)
@@ -68,6 +71,47 @@ export default function VideoInputArea({
     streamRef.current?.getTracks().forEach(t => t.stop())
     setRecording(false)
     setMediaRecorder(null)
+  }
+
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-2 w-full">
+        {recording ? (
+          <button
+            onClick={stopRecording}
+            className="w-full flex items-center justify-center gap-2 bg-red-500 text-white rounded-xl py-3 text-sm font-semibold hover:bg-red-600 transition"
+          >
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            停止
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={startRecording}
+              className="w-full flex items-center justify-center gap-2 bg-[#1e3a5f] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#162d4a] transition"
+            >
+              <div className="w-2 h-2 bg-red-400 rounded-full" />
+              録画する
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 rounded-xl py-3 text-sm font-semibold hover:border-gray-400 hover:bg-gray-50 transition"
+            >
+              ファイルを選択
+            </button>
+          </>
+        )}
+        {error && <p className="text-[#ef4444] text-xs text-center">{error}</p>}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={handleFileChange}
+          aria-label={`${label}の動画を選択`}
+        />
+      </div>
+    )
   }
 
   return (
