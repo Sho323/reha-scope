@@ -68,13 +68,50 @@ export function detectSagittalValidity(allLandmarks: PoseLandmarks[]): boolean[]
   return valid
 }
 
+/**
+ * 解剖学的妥当性チェック（前額面・矢状面共通）
+ *
+ * 以下のいずれかに該当するフレームを無効とする：
+ *   - 主要下肢ランドマークの visibility が低い（MediaPipe の検出不信頼）
+ *   - 膝 or 足首が股関節より上（y座標が小さい）= 解剖学的に不正
+ */
+export function detectAnatomicalValidity(allLandmarks: PoseLandmarks[]): boolean[] {
+  const VIS_THRESHOLD = 0.35
+
+  return allLandmarks.map(lm => {
+    if (!lm || lm.length === 0) return false
+
+    // 左右どちらかで解剖学的に正常なら有効とみなす
+    const checkSide = (hip: number, knee: number, ankle: number): boolean => {
+      const h = lm[hip]; const k = lm[knee]; const a = lm[ankle]
+      if (!h || !k || !a) return false
+      // visibility チェック
+      if ((h.visibility ?? 1) < VIS_THRESHOLD) return false
+      if ((k.visibility ?? 1) < VIS_THRESHOLD) return false
+      if ((a.visibility ?? 1) < VIS_THRESHOLD) return false
+      // 解剖学的順序チェック（画像座標: y下向き正）
+      if (k.y < h.y) return false  // 膝が股関節より上
+      if (a.y < h.y) return false  // 足首が股関節より上
+      return true
+    }
+
+    const leftOk  = checkSide(23, 25, 27)
+    const rightOk = checkSide(24, 26, 28)
+    return leftOk || rightOk
+  })
+}
+
 export function detectValidity(
   allLandmarks: PoseLandmarks[],
   plane: 'frontal' | 'sagittal'
 ): boolean[] {
-  return plane === 'frontal'
+  const directional  = plane === 'frontal'
     ? detectFrontalValidity(allLandmarks)
     : detectSagittalValidity(allLandmarks)
+  const anatomical = detectAnatomicalValidity(allLandmarks)
+
+  // 両方の条件を満たすフレームのみ有効
+  return directional.map((d, i) => d && anatomical[i])
 }
 
 /** 有効フレームのみを使ってデータ配列をフィルタリング */

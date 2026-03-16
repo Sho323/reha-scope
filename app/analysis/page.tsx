@@ -211,10 +211,12 @@ export default function AnalysisPage() {
       extension: 'pdf',
     })
     await generatePdf({
-      beforeData:   currentPlaneData.beforeData,
-      afterData:    currentPlaneData.afterData,
-      plane:        activeTab,
-      movementType: movementType ?? 'unknown',
+      beforeData:      currentPlaneData.beforeData,
+      afterData:       currentPlaneData.afterData,
+      beforeValidity:  currentPlaneData.beforeValidity,
+      afterValidity:   currentPlaneData.afterValidity,
+      plane:           activeTab,
+      movementType:    movementType ?? 'unknown',
       fileName,
     })
   }
@@ -537,6 +539,8 @@ export default function AnalysisPage() {
                 <GravityPlot
                   beforeData={currentPlaneData.beforeData}
                   afterData={currentPlaneData.afterData}
+                  beforeValidity={currentPlaneData.beforeValidity}
+                  afterValidity={currentPlaneData.afterValidity}
                   plane={currentPlaneData.plane}
                   currentTime={currentTime}
                   onSeek={handleSeek}

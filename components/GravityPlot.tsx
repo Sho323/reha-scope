@@ -17,6 +17,8 @@ const FPS = 15
 interface GravityPlotProps {
   beforeData: FrameData[]
   afterData: FrameData[]
+  beforeValidity?: boolean[]
+  afterValidity?: boolean[]
   plane?: 'frontal' | 'sagittal'
   /** 動画の現在再生時刻（秒）— グラフにカーソルを表示 */
   currentTime?: number
@@ -75,6 +77,8 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function GravityPlot({
   beforeData,
   afterData,
+  beforeValidity,
+  afterValidity,
   plane = 'sagittal',
   currentTime,
   onSeek,
@@ -83,13 +87,21 @@ export default function GravityPlot({
   const isSagittal = plane === 'sagittal'
 
   // 矢状面は平均を引いてゼロ基準に（高さの絶対値より変動幅を見やすくする）
-  const bRaw = beforeData.map(d => toValue(d, plane))
-  const aRaw = hasAfter ? afterData.map(d => toValue(d, plane)) : []
-  const bMean = isSagittal ? mean(bRaw) : 0
-  const aMean = isSagittal ? mean(aRaw)  : 0
+  // 無効フレームは null にしてグラフから除外（統計・平均にも含めない）
+  const bRaw = beforeData.map((d, i) =>
+    beforeValidity && beforeValidity[i] === false ? null : toValue(d, plane)
+  )
+  const aRaw = hasAfter ? afterData.map((d, i) =>
+    afterValidity && afterValidity[i] === false ? null : toValue(d, plane)
+  ) : []
 
-  const bVals = bRaw.map(v => +(v - bMean).toFixed(3))
-  const aVals = aRaw.map(v => +(v - aMean).toFixed(3))
+  const bValid = bRaw.filter((v): v is number => v !== null)
+  const aValid = aRaw.filter((v): v is number => v !== null)
+  const bMean = isSagittal ? mean(bValid) : 0
+  const aMean = isSagittal ? mean(aValid) : 0
+
+  const bVals = bRaw.map(v => v === null ? null : +(v - bMean).toFixed(3))
+  const aVals = aRaw.map(v => v === null ? null : +(v - aMean).toFixed(3))
 
   const maxLen = Math.max(bVals.length, aVals.length)
   const chartData = Array.from({ length: maxLen }, (_, i) => ({
@@ -98,8 +110,8 @@ export default function GravityPlot({
     after:  hasAfter ? (aVals[i] ?? null) : null,
   }))
 
-  const bStats = calcStats(bVals)
-  const aStats = hasAfter ? calcStats(aVals) : null
+  const bStats = calcStats(bVals.filter((v): v is number => v !== null))
+  const aStats = hasAfter ? calcStats(aVals.filter((v): v is number => v !== null)) : null
 
   const deltaRange = bStats && aStats
     ? +((aStats.range - bStats.range) * (isSagittal ? 1 : 1)).toFixed(3)

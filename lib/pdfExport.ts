@@ -58,33 +58,40 @@ function calcPeak(data: FrameData[], key: keyof FrameData): number {
 }
 
 export interface PdfReportOptions {
-  beforeData:   FrameData[]
-  afterData:    FrameData[]
-  plane:        'frontal' | 'sagittal'
-  movementType: string
-  fileName:     string
+  beforeData:      FrameData[]
+  afterData:       FrameData[]
+  beforeValidity?: boolean[]
+  afterValidity?:  boolean[]
+  plane:           'frontal' | 'sagittal'
+  movementType:    string
+  fileName:        string
 }
 
 export async function generatePdf(options: PdfReportOptions): Promise<void> {
-  const { beforeData, afterData, plane, movementType, fileName } = options
-  const hasAfter = afterData.length > 0
+  const { beforeData, afterData, beforeValidity, afterValidity, plane, movementType, fileName } = options
+
+  // 有効フレームのみ使用
+  const validBefore = beforeData.filter((_, i) => !beforeValidity || beforeValidity[i] !== false)
+  const validAfter  = afterData.filter((_, i)  => !afterValidity  || afterValidity[i]  !== false)
+
+  const hasAfter = validAfter.length > 0
   const joints   = plane === 'sagittal' ? SAGITTAL_JOINTS : FRONTAL_JOINTS
 
   const now     = new Date()
   const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
 
-  // 重心偏位
-  const bGrav   = beforeData.map(d => plane === 'sagittal' ? 1 - d.gravityY : d.gravityX - 0.5)
-  const aGrav   = hasAfter ? afterData.map(d => plane === 'sagittal' ? 1 - d.gravityY : d.gravityX - 0.5) : []
+  // 重心偏位（有効フレームのみ）
+  const bGrav   = validBefore.map(d => plane === 'sagittal' ? 1 - d.gravityY : d.gravityX - 0.5)
+  const aGrav   = hasAfter ? validAfter.map(d => plane === 'sagittal' ? 1 - d.gravityY : d.gravityX - 0.5) : []
   const bRange  = bGrav.length > 0 ? Math.max(...bGrav) - Math.min(...bGrav) : 0
   const aRange  = aGrav.length > 0 ? Math.max(...aGrav) - Math.min(...aGrav) : 0
   const cogLabel = plane === 'sagittal' ? '重心上下変位量' : '重心左右変位量'
 
-  // テーブル行 HTML
+  // テーブル行 HTML（有効フレームのみ）
   const tableRows = joints.map(j => {
-    const bA    = calcAvg(beforeData,  j.key as keyof FrameData)
-    const aA    = hasAfter ? calcAvg(afterData, j.key as keyof FrameData) : null
-    const bPeak = calcPeak(beforeData, j.key as keyof FrameData)
+    const bA    = calcAvg(validBefore,  j.key as keyof FrameData)
+    const aA    = hasAfter ? calcAvg(validAfter, j.key as keyof FrameData) : null
+    const bPeak = calcPeak(validBefore, j.key as keyof FrameData)
     const delta = aA !== null ? aA - bA : null
 
     const deltaColor = delta === null ? '' : delta < 0 ? '#16a34a' : delta > 0 ? '#dc2626' : '#6b7280'
@@ -249,8 +256,8 @@ export async function generatePdf(options: PdfReportOptions): Promise<void> {
     <div class="section-title">関節角度　サマリー（Before 平均）</div>
     <div class="summary-cards">
       ${joints.map(j => {
-        const bA = calcAvg(beforeData, j.key as keyof FrameData)
-        const aA = hasAfter ? calcAvg(afterData, j.key as keyof FrameData) : null
+        const bA = calcAvg(validBefore, j.key as keyof FrameData)
+        const aA = hasAfter ? calcAvg(validAfter, j.key as keyof FrameData) : null
         return `
           <div class="summary-card">
             <div class="summary-card-label">${j.label}</div>

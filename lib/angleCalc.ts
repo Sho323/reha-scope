@@ -132,12 +132,17 @@ export function calculateAnkleAngle(landmarks: PoseLandmarks, side: Side = 'auto
 
   if (!lKnee || !lAnkle || !lFoot || !rKnee || !rAnkle || !rFoot) return 0
 
-  // 足先が足首より大幅に上(差 > 0.08)は MediaPipe の誤検出 → その側をスキップ
-  // 許容幅 0.08 を設けることで、立ち上がり時の背屈（つま先がわずかに持ち上がる）を
-  // 誤って排除しないようにする
   const FOOT_TOLERANCE = 0.08
-  const lFootValid = lFoot.y >= lAnkle.y - FOOT_TOLERANCE
-  const rFootValid = rFoot.y >= rAnkle.y - FOOT_TOLERANCE
+  const VIS_THRESHOLD  = 0.35
+  // 足首が股関節より上 / visibility 不足 / 足先が足首より大幅に上 → 誤検出としてスキップ
+  const lHip = landmarks[LM.LEFT_HIP]
+  const rHip = landmarks[LM.RIGHT_HIP]
+  const lAnkleValid = (lAnkle.visibility ?? 1) >= VIS_THRESHOLD
+                   && (!lHip || lAnkle.y >= lHip.y)
+  const rAnkleValid = (rAnkle.visibility ?? 1) >= VIS_THRESHOLD
+                   && (!rHip || rAnkle.y >= rHip.y)
+  const lFootValid = lAnkleValid && lFoot.y >= lAnkle.y - FOOT_TOLERANCE
+  const rFootValid = rAnkleValid && rFoot.y >= rAnkle.y - FOOT_TOLERANCE
 
   const resolved = side === 'auto' ? detectFrameSide(landmarks) : side
   if (resolved === 'left')  return lFootValid ? Math.round(90 - calcAngle(lKnee, lAnkle, lFoot)) : 0

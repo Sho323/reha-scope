@@ -91,7 +91,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="py-5 text-center">
-        <span className="text-xs text-gray-400">© 2024 RehaScope • v1.0.0</span>
+        <span className="text-xs text-gray-400">© 2026 RehaScope • v1.0.0</span>
       </footer>
     </div>
   )

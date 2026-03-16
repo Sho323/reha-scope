@@ -28,16 +28,34 @@ const CONNECTIONS: [number, number][] = [
  * 誤排除しないよう、差が閾値以上の場合のみ無効とする。
  */
 const FOOT_TOLERANCE = 0.08
+/** visibility がこの値未満のランドマークは信頼できないとして除外 */
+const VIS_THRESHOLD = 0.35
 
 function getInvalidLandmarks(lm: PoseLandmarks): Set<number> {
   const invalid = new Set<number>()
-  // 左: foot_index が ankle より大幅に上
-  if (lm[31] && lm[27] && lm[31].y < lm[27].y - FOOT_TOLERANCE) { invalid.add(31) }
-  // 右: foot_index が ankle より大幅に上
-  if (lm[32] && lm[28] && lm[32].y < lm[28].y - FOOT_TOLERANCE) { invalid.add(32) }
-  // ankle が knee より大幅に上
-  if (lm[27] && lm[25] && lm[27].y < lm[25].y - FOOT_TOLERANCE) { invalid.add(27); invalid.add(31) }
-  if (lm[28] && lm[26] && lm[28].y < lm[26].y - FOOT_TOLERANCE) { invalid.add(28); invalid.add(32) }
+
+  // ① visibility が低いランドマーク（MediaPipe が自信を持てていない）
+  const lowerBody = [23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+  for (const idx of lowerBody) {
+    if (lm[idx] && (lm[idx].visibility ?? 1) < VIS_THRESHOLD) invalid.add(idx)
+  }
+
+  // ② 解剖学的順序チェック: 膝が股関節より上（y値が小さい）= 誤検出
+  if (lm[25] && lm[23] && lm[25].y < lm[23].y) { invalid.add(25); invalid.add(27); invalid.add(31) }
+  if (lm[26] && lm[24] && lm[26].y < lm[24].y) { invalid.add(26); invalid.add(28); invalid.add(32) }
+
+  // ③ 解剖学的順序チェック: 足首が股関節より上 = 誤検出
+  if (lm[27] && lm[23] && lm[27].y < lm[23].y) { invalid.add(27); invalid.add(31) }
+  if (lm[28] && lm[24] && lm[28].y < lm[24].y) { invalid.add(28); invalid.add(32) }
+
+  // ④ 足首が膝より FOOT_TOLERANCE 以上上（既存ロジック、許容幅付き）
+  if (lm[27] && lm[25] && !invalid.has(25) && lm[27].y < lm[25].y - FOOT_TOLERANCE) { invalid.add(27); invalid.add(31) }
+  if (lm[28] && lm[26] && !invalid.has(26) && lm[28].y < lm[26].y - FOOT_TOLERANCE) { invalid.add(28); invalid.add(32) }
+
+  // ⑤ foot_index が足首より FOOT_TOLERANCE 以上上（既存ロジック）
+  if (lm[31] && lm[27] && !invalid.has(27) && lm[31].y < lm[27].y - FOOT_TOLERANCE) { invalid.add(31) }
+  if (lm[32] && lm[28] && !invalid.has(28) && lm[32].y < lm[28].y - FOOT_TOLERANCE) { invalid.add(32) }
+
   return invalid
 }
 
@@ -137,6 +155,8 @@ export default function PoseOverlay({
 
     ctx.font = 'bold 12px sans-serif'
     for (const { lm: idx, label, color } of labelPositions) {
+      // ランドマークが解剖学的に無効な場合はラベルも表示しない
+      if (invalidLm.has(idx)) continue
       const lm = landmarks[idx]
       if (!lm) continue
       const x = toX(lm.x) + 8
