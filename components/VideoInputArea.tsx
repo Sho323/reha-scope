@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface VideoInputAreaProps {
   label: string
@@ -19,11 +19,18 @@ export default function VideoInputArea({
   compact = false,
 }: VideoInputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const [recording, setRecording] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [error, setError] = useState('')
+  const [isIOS, setIsIOS] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+
+  useEffect(() => {
+    const ua = navigator.userAgent
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+  }, [])
 
   const borderClass = borderColor === 'blue' ? 'border-[#3b82f6]' : 'border-[#f97316]'
   const labelClass = borderColor === 'blue' ? 'text-[#3b82f6]' : 'text-[#f97316]'
@@ -38,6 +45,8 @@ export default function VideoInputArea({
     }
     const url = URL.createObjectURL(file)
     onVideoReady(url)
+    // 同じファイルを再選択できるようリセット
+    e.target.value = ''
   }
 
   const getSupportedMimeType = () => {
@@ -82,6 +91,19 @@ export default function VideoInputArea({
     setMediaRecorder(null)
   }
 
+  // iOS: ネイティブカメラ入力
+  const iosCameraInput = (
+    <input
+      ref={cameraInputRef}
+      type="file"
+      accept="video/*"
+      capture="environment"
+      className="hidden"
+      onChange={handleFileChange}
+      aria-label={`${label}のカメラ撮影`}
+    />
+  )
+
   if (compact) {
     return (
       <div className="flex flex-col gap-2 w-full">
@@ -96,7 +118,7 @@ export default function VideoInputArea({
         ) : (
           <>
             <button
-              onClick={startRecording}
+              onClick={() => isIOS ? cameraInputRef.current?.click() : startRecording()}
               className="w-full flex items-center justify-center gap-2 bg-[#1e3a5f] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#162d4a] transition"
             >
               <div className="w-2 h-2 bg-red-400 rounded-full" />
@@ -111,6 +133,7 @@ export default function VideoInputArea({
           </>
         )}
         {error && <p className="text-[#ef4444] text-xs text-center">{error}</p>}
+        {iosCameraInput}
         <input
           ref={fileInputRef}
           type="file"
@@ -137,6 +160,7 @@ export default function VideoInputArea({
             src={videoUrl}
             className="w-full h-full object-cover"
             controls
+            playsInline
             data-testid={`${label.toLowerCase().replace(/\s/g, '-')}-video-preview`}
           />
         )}
@@ -162,7 +186,7 @@ export default function VideoInputArea({
         {!recording ? (
           <>
             <button
-              onClick={startRecording}
+              onClick={() => isIOS ? cameraInputRef.current?.click() : startRecording()}
               className="flex-1 flex items-center justify-center gap-1.5 border border-[#1e3a5f] text-[#1e3a5f] rounded-lg py-2 text-sm font-medium hover:bg-[#1e3a5f] hover:text-white transition"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -196,6 +220,7 @@ export default function VideoInputArea({
 
       {error && <p className="text-[#ef4444] text-xs text-center">{error}</p>}
 
+      {iosCameraInput}
       <input
         ref={fileInputRef}
         type="file"
