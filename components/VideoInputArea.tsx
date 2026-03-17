@@ -40,6 +40,11 @@ export default function VideoInputArea({
     onVideoReady(url)
   }
 
+  const getSupportedMimeType = () => {
+    const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+    return types.find(t => MediaRecorder.isTypeSupported(t)) ?? ''
+  }
+
   const startRecording = async () => {
     setError('')
     try {
@@ -47,13 +52,14 @@ export default function VideoInputArea({
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        videoRef.current.play()
+        videoRef.current.play().catch(() => {})
       }
+      const mimeType = getSupportedMimeType()
       const chunks: BlobPart[] = []
-      const mr = new MediaRecorder(stream)
-      mr.ondataavailable = e => chunks.push(e.data)
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
       mr.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' })
+        const blob = new Blob(chunks, { type: mimeType || 'video/mp4' })
         const url = URL.createObjectURL(blob)
         onVideoReady(url)
         if (videoRef.current) videoRef.current.srcObject = null
@@ -67,7 +73,10 @@ export default function VideoInputArea({
   }
 
   const stopRecording = () => {
-    mediaRecorder?.stop()
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.requestData()
+      mediaRecorder.stop()
+    }
     streamRef.current?.getTracks().forEach(t => t.stop())
     setRecording(false)
     setMediaRecorder(null)
@@ -121,7 +130,7 @@ export default function VideoInputArea({
       {/* Preview */}
       <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
         {recording && (
-          <video ref={videoRef} className="w-full h-full object-cover" muted data-testid={`${label}-live`} />
+          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline autoPlay data-testid={`${label}-live`} />
         )}
         {!recording && videoUrl && (
           <video
