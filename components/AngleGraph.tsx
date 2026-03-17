@@ -187,7 +187,7 @@ export default function AngleGraph({
 
       {/* 関節タブ */}
       {!selectedJoint && (
-        <div className="flex gap-2 mb-4 flex-wrap">
+        <div className="flex gap-2 mb-4 flex-wrap justify-center">
           {joints.map(j => (
             <button
               key={j.key}
