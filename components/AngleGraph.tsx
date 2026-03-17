@@ -291,7 +291,7 @@ export default function AngleGraph({
               label={{
                 value: `▶ ${currentTime.toFixed(1)}s`,
                 position: 'top',
-                fontSize: 8,
+                fontSize: 6,
                 fill: '#1e3a5f',
                 fontWeight: 'normal',
               }}
