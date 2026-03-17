@@ -107,15 +107,14 @@ export default function InputPage() {
             </summary>
             <div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-gray-600">
               {[
-                { icon: '📏', title: '撮影距離', desc: '全身が映る距離\n（目安 2〜3 m）' },
-                { icon: '📐', title: 'カメラ高さ', desc: '腰の高さ付近\n（床から約 1 m）' },
-                { icon: plane === 'sagittal' ? '↔️' : '⬆️', title: '撮影方向', desc: plane === 'sagittal' ? '側面 90° から\n真横に' : '正面から\nまっすぐ' },
-                { icon: '💡', title: '明るさ', desc: '逆光を避け\n均一な明るさ' },
-                { icon: '🧍', title: '被写体', desc: '関節が見える\n服装が望ましい' },
-                { icon: '🎯', title: '画角', desc: '頭〜足先まで\nフレームに収める' },
+                { title: '撮影距離', desc: '全身が映る距離\n（目安 2〜3 m）' },
+                { title: 'カメラ高さ', desc: '腰の高さ付近\n（床から約 1 m）' },
+                { title: '撮影方向', desc: plane === 'sagittal' ? '側面 90° から\n真横に' : '正面から\nまっすぐ' },
+                { title: '明るさ', desc: '逆光を避け\n均一な明るさ' },
+                { title: '服装', desc: '関節が見える\n服装が望ましい' },
+                { title: '画角', desc: '頭〜足先まで\nフレームに収める' },
               ].map(g => (
                 <div key={g.title} className="bg-white rounded-xl p-3 border border-blue-100">
-                  <div className="text-lg mb-1">{g.icon}</div>
                   <div className="font-semibold text-[#1e3a5f] mb-0.5">{g.title}</div>
                   <div className="whitespace-pre-line leading-relaxed">{g.desc}</div>
                 </div>
