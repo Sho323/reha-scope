@@ -286,14 +286,14 @@ export default function AngleGraph({
             <ReferenceLine
               x={+currentTime.toFixed(2)}
               stroke="#1e3a5f"
-              strokeWidth={1}
-              strokeDasharray="4 3"
+              strokeWidth={0.5}
+              strokeDasharray="3 3"
               label={{
                 value: `▶ ${currentTime.toFixed(1)}s`,
                 position: 'top',
-                fontSize: 10,
+                fontSize: 8,
                 fill: '#1e3a5f',
-                fontWeight: 'bold',
+                fontWeight: 'normal',
               }}
             />
           )}
