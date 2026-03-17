@@ -35,6 +35,7 @@ interface SessionState {
     frontal?: AnalysisData
     sagittal?: AnalysisData
   }
+  clinicalNote: string
 }
 
 interface SessionContextValue extends SessionState {
@@ -42,6 +43,7 @@ interface SessionContextValue extends SessionState {
   setPlane: (p: PlaneType) => void
   setVideos: (v: VideoSet) => void
   setAnalysisData: (plane: 'frontal' | 'sagittal', data: AnalysisData) => void
+  setClinicalNote: (note: string) => void
   reset: () => void
 }
 
@@ -52,6 +54,7 @@ const initialState: SessionState = {
   plane: null,
   videos: {},
   analysisData: {},
+  clinicalNote: '',
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -72,11 +75,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       analysisData: { ...s.analysisData, [plane]: data },
     }))
 
+  const setClinicalNote = (note: string) =>
+    setState(s => ({ ...s, clinicalNote: note }))
+
   const reset = () => setState(initialState)
 
   return (
     <SessionContext.Provider
-      value={{ ...state, setMovementType, setPlane, setVideos, setAnalysisData, reset }}
+      value={{ ...state, setMovementType, setPlane, setVideos, setAnalysisData, setClinicalNote, reset }}
     >
       {children}
     </SessionContext.Provider>

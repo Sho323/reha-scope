@@ -96,6 +96,34 @@ export default function InputPage() {
           </div>
         </div>
 
+        {/* 撮影ガイド */}
+        {plane && (
+          <details className="mb-6 bg-blue-50 border border-blue-200 rounded-2xl overflow-hidden">
+            <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer text-sm font-semibold text-[#1e3a5f] select-none">
+              <svg className="w-4 h-4 text-[#3b82f6] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              撮影ガイド（タップで展開）
+            </summary>
+            <div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-gray-600">
+              {[
+                { icon: '📏', title: '撮影距離', desc: '全身が映る距離\n（目安 2〜3 m）' },
+                { icon: '📐', title: 'カメラ高さ', desc: '腰の高さ付近\n（床から約 1 m）' },
+                { icon: plane === 'sagittal' ? '↔️' : '⬆️', title: '撮影方向', desc: plane === 'sagittal' ? '側面 90° から\n真横に' : '正面から\nまっすぐ' },
+                { icon: '💡', title: '明るさ', desc: '逆光を避け\n均一な明るさ' },
+                { icon: '🧍', title: '被写体', desc: '関節が見える\n服装が望ましい' },
+                { icon: '🎯', title: '画角', desc: '頭〜足先まで\nフレームに収める' },
+              ].map(g => (
+                <div key={g.title} className="bg-white rounded-xl p-3 border border-blue-100">
+                  <div className="text-lg mb-1">{g.icon}</div>
+                  <div className="font-semibold text-[#1e3a5f] mb-0.5">{g.title}</div>
+                  <div className="whitespace-pre-line leading-relaxed">{g.desc}</div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+
         {/* Video cards */}
         {plane && (
           <>

@@ -39,7 +39,7 @@ const MOVEMENT_LABELS: Record<string, string> = {
 
 export default function AnalysisPage() {
   useAuthGuard()
-  const { movementType, plane, videos } = useSession()
+  const { movementType, plane, videos, clinicalNote, setClinicalNote } = useSession()
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>(plane === 'sagittal' ? 'sagittal' : 'frontal')
@@ -218,6 +218,7 @@ export default function AnalysisPage() {
       plane:           activeTab,
       movementType:    movementType ?? 'unknown',
       fileName,
+      clinicalNote,
     })
   }
 
@@ -549,6 +550,20 @@ export default function AnalysisPage() {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 所見入力欄 */}
+        {status === 'done' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+            <label className="block text-sm font-bold text-[#1e3a5f] mb-2">臨床所見・メモ</label>
+            <textarea
+              value={clinicalNote}
+              onChange={e => setClinicalNote(e.target.value)}
+              placeholder="介入内容、所見、特記事項などを入力してください（PDF出力に含まれます）"
+              rows={4}
+              className="w-full text-sm text-gray-700 border border-gray-300 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] placeholder-gray-300"
+            />
           </div>
         )}
 

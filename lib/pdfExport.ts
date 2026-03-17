@@ -65,10 +65,11 @@ export interface PdfReportOptions {
   plane:           'frontal' | 'sagittal'
   movementType:    string
   fileName:        string
+  clinicalNote?:   string
 }
 
 export async function generatePdf(options: PdfReportOptions): Promise<void> {
-  const { beforeData, afterData, beforeValidity, afterValidity, plane, movementType, fileName } = options
+  const { beforeData, afterData, beforeValidity, afterValidity, plane, movementType, fileName, clinicalNote } = options
 
   // 有効フレームのみ使用
   const validBefore = beforeData.filter((_, i) => !beforeValidity || beforeValidity[i] !== false)
@@ -277,6 +278,12 @@ export async function generatePdf(options: PdfReportOptions): Promise<void> {
     <!-- 重心偏位 -->
     <div class="section-title">${cogLabel}</div>
     <div class="cog-cards">${gravCards}</div>
+
+    ${clinicalNote ? `
+    <!-- 臨床所見 -->
+    <div class="section-title">臨床所見・メモ</div>
+    <div style="background:#f8fafc;border-radius:8px;padding:12px 14px;font-size:11px;line-height:1.8;color:#334155;white-space:pre-wrap;">${clinicalNote.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+    ` : ''}
 
   </div>
 
