@@ -192,7 +192,7 @@ export default function AngleGraph({
             <button
               key={j.key}
               onClick={() => setActiveJoint(j.key)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition border ${
+              className={`px-5 py-2 rounded-full text-sm font-semibold transition border ${
                 activeJoint === j.key
                   ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
                   : 'bg-white text-gray-500 border-gray-300 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'
