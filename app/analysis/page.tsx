@@ -273,29 +273,29 @@ export default function AnalysisPage() {
   return (
     <div className="min-h-screen bg-[#f5f7fa] flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-0 flex items-center justify-between">
+      <header className="bg-white border-b border-gray-200 px-3 py-0 flex items-center justify-between gap-2">
         {/* Logo + back */}
         <button
           onClick={() => router.push('/input')}
-          className="flex items-center gap-2.5 py-4"
+          className="flex items-center gap-2 py-3 flex-shrink-0"
         >
-          <div className="w-8 h-8 bg-[#1e3a5f] rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-7 h-7 bg-[#1e3a5f] rounded-full flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
-          <span className="font-bold text-[#1e3a5f]">RehaScope</span>
+          <span className="font-bold text-[#1e3a5f] text-sm hidden sm:block">RehaScope</span>
         </button>
 
         {/* Tabs (always visible; single plane shows one tab) */}
-        <div className="flex items-end h-full">
+        <div className="flex items-end h-full flex-1 justify-center">
           {(plane === 'both' ? (['frontal', 'sagittal'] as ActiveTab[]) : ([activeTab] as ActiveTab[])).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               role="tab"
-              className={`px-5 py-4 text-sm font-semibold border-b-2 transition ${
+              className={`px-3 sm:px-5 py-3 text-xs sm:text-sm font-semibold border-b-2 transition ${
                 activeTab === tab
                   ? 'border-[#3b82f6] text-[#3b82f6]'
                   : 'border-transparent text-gray-400 hover:text-gray-600'
@@ -307,26 +307,28 @@ export default function AnalysisPage() {
         </div>
 
         {/* Export buttons */}
-        <div className="flex gap-2 py-4">
+        <div className="flex gap-1.5 py-3 flex-shrink-0">
           <button
             onClick={handleExportPdf}
-            className="flex items-center gap-1.5 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            className="flex items-center gap-1 border border-gray-300 text-gray-700 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            PDF出力
+            <span className="hidden sm:inline">PDF出力</span>
+            <span className="sm:hidden">PDF</span>
           </button>
           <button
             onClick={handleExportCsv}
-            className="flex items-center gap-1.5 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+            className="flex items-center gap-1 border border-gray-300 text-gray-700 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            CSV出力
+            <span className="hidden sm:inline">CSV出力</span>
+            <span className="sm:hidden">CSV</span>
           </button>
         </div>
       </header>
@@ -459,8 +461,8 @@ export default function AnalysisPage() {
                 />
 
                 {/* Time */}
-                <span className="text-xs text-gray-500 font-mono flex-shrink-0 w-28 text-right">
-                  {currentTime.toFixed(1)} / {videoDuration.toFixed(1)}秒
+                <span className="text-xs text-gray-500 font-mono flex-shrink-0 text-right">
+                  {currentTime.toFixed(1)}/<span className="hidden sm:inline">{videoDuration.toFixed(1)}秒</span><span className="sm:hidden">{videoDuration.toFixed(1)}s</span>
                 </span>
               </div>
 
@@ -498,9 +500,9 @@ export default function AnalysisPage() {
 
             {/* 矢状面：撮影側セレクター */}
             {activeTab === 'sagittal' && (
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b">
-                <span className="text-xs text-gray-500 font-medium">撮影側：</span>
-                <div className="flex gap-1.5">
+              <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b">
+                <span className="text-xs text-gray-500 font-medium flex-shrink-0">撮影側：</span>
+                <div className="flex flex-wrap gap-1.5">
                   {([
                     { value: 'auto',  label: '自動（フレームごと）' },
                     { value: 'left',  label: '左側固定' },
@@ -523,8 +525,8 @@ export default function AnalysisPage() {
               </div>
             )}
 
-            <div className="flex gap-6 items-start">
-              <div className="flex-1">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+              <div className="flex-1 min-w-0">
                 <AngleGraph
                   beforeData={currentPlaneData.beforeData}
                   afterData={currentPlaneData.afterData}
@@ -535,7 +537,7 @@ export default function AnalysisPage() {
                   onSeek={handleSeek}
                 />
               </div>
-              <div className="w-72 flex-shrink-0">
+              <div className="w-full lg:w-72 lg:flex-shrink-0">
                 <GravityPlot
                   beforeData={currentPlaneData.beforeData}
                   afterData={currentPlaneData.afterData}

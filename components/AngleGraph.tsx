@@ -187,12 +187,12 @@ export default function AngleGraph({
 
       {/* 関節タブ */}
       {!selectedJoint && (
-        <div className="flex gap-1.5 mb-4 flex-wrap">
+        <div className="flex gap-2 mb-4 flex-wrap">
           {joints.map(j => (
             <button
               key={j.key}
               onClick={() => setActiveJoint(j.key)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition border ${
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition border ${
                 activeJoint === j.key
                   ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
                   : 'bg-white text-gray-500 border-gray-300 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'
@@ -205,17 +205,18 @@ export default function AngleGraph({
       )}
 
       {/* タイトル + 操作ヒント */}
-      <div className="flex items-baseline justify-between mb-3 gap-2 flex-wrap">
-        <div className="flex items-baseline gap-2">
+      <div className="flex items-start justify-between mb-3 gap-2 flex-wrap">
+        <div>
           <h3 className="text-sm font-bold text-gray-700">{jointMeta.label}</h3>
-          <span className="text-[10px] text-gray-400">（°） — {jointMeta.description}</span>
+          <span className="text-[10px] text-gray-400 hidden sm:inline">（°） — {jointMeta.description}</span>
         </div>
         {onSeek && (
-          <span className="text-[10px] text-[#3b82f6] flex items-center gap-1">
+          <span className="text-[10px] text-[#3b82f6] flex items-center gap-1 flex-shrink-0">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
             </svg>
-            グラフをクリックで動画シーク
+            <span className="hidden sm:inline">グラフをクリックで動画シーク</span>
+            <span className="sm:hidden">タップでシーク</span>
           </span>
         )}
       </div>

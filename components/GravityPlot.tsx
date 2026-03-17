@@ -124,7 +124,7 @@ export default function GravityPlot({
         <h3 className="text-sm font-bold text-gray-700">
           重心 {isSagittal ? '上下' : '左右'}変位
         </h3>
-        <span className="text-[10px] text-gray-400">
+        <span className="text-[10px] text-gray-400 hidden sm:inline">
           {isSagittal
             ? '垂直方向（＋＝平均より高い）'
             : '水平方向（＋＝右偏位　−＝左偏位）'}
@@ -171,7 +171,8 @@ export default function GravityPlot({
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
             </svg>
-            グラフをクリックで動画シーク
+            <span className="hidden sm:inline">グラフをクリックで動画シーク</span>
+            <span className="sm:hidden">タップでシーク</span>
           </span>
         </div>
       )}
