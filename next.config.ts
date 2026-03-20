@@ -9,7 +9,7 @@ const withPWA = withPWAInit({
     skipWaiting: true,
     runtimeCaching: [
       {
-        urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
+        urlPattern: /\/mediapipe\/.*/i,
         handler: 'CacheFirst',
         options: {
           cacheName: 'mediapipe-cache',

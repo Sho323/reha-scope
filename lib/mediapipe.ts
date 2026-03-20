@@ -10,9 +10,8 @@ export type Landmark = { x: number; y: number; z: number; visibility?: number }
 export type PoseLandmarks = Landmark[]
 
 // ─── 定数 ────────────────────────────────────────────────
-const TASKS_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14'
-const MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
+const TASKS_CDN = '/mediapipe'
+const MODEL_URL = '/mediapipe/pose_landmarker_lite.task'
 
 /** window に保持してHMRリロードをまたいで再利用 */
 const SINGLETON_KEY = '__rehaScope_poseLandmarker'

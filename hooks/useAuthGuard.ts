@@ -7,7 +7,7 @@ export function useAuthGuard() {
   const router = useRouter()
 
   useEffect(() => {
-    const isAuthed = sessionStorage.getItem('reha_auth')
+    const isAuthed = localStorage.getItem('reha_auth')
     if (!isAuthed) {
       router.push('/')
     }

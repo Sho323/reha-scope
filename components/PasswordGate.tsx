@@ -9,7 +9,7 @@ export default function PasswordGate() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -20,8 +20,14 @@ export default function PasswordGate() {
 
     setLoading(true)
 
-    if (password === process.env.NEXT_PUBLIC_APP_PASSWORD) {
-      sessionStorage.setItem('reha_auth', 'true')
+    const encoded = new TextEncoder().encode(password)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoded)
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    if (hashHex === process.env.NEXT_PUBLIC_PASSWORD_HASH) {
+      localStorage.setItem('reha_auth', 'true')
       document.cookie = 'reha_auth=true; path=/; SameSite=Strict'
       router.push('/home')
     } else {
