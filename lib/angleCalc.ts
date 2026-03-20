@@ -228,7 +228,10 @@ export function calculatePelvicObliquity(landmarks: PoseLandmarks): number {
  * 左膝外反: knee.x > midpoint(hip, ankle).x（膝が中心寄り = 画像上で右方向）
  * 右膝外反: knee.x < midpoint(hip, ankle).x（膝が中心寄り = 画像上で左方向）
  */
-export function calculateKneeValgus(landmarks: PoseLandmarks): number {
+export function calculateKneeValgus(
+  landmarks: PoseLandmarks,
+  supportSide?: 'left' | 'right'
+): number {
   const lHip   = landmarks[LM.LEFT_HIP]
   const lKnee  = landmarks[LM.LEFT_KNEE]
   const lAnkle = landmarks[LM.LEFT_ANKLE]
@@ -247,6 +250,9 @@ export function calculateKneeValgus(landmarks: PoseLandmarks): number {
   // 右: 膝が中心寄り（x小さい）= 外反 = 正
   const rSigned = rKnee.x < rMidX ? rDev : -rDev
 
+  // 片脚立位の場合は支持脚のみを返す
+  if (supportSide === 'left')  return Math.round(lSigned)
+  if (supportSide === 'right') return Math.round(rSigned)
   return Math.round((lSigned + rSigned) / 2)
 }
 
@@ -269,14 +275,19 @@ export function calculateShoulderObliquity(landmarks: PoseLandmarks): number {
  * 前額面の全角度を計算。
  * FrameData の同じフィールドに前額面の意味を割り当てる:
  *   hip   → 骨盤傾斜角
- *   knee  → 膝外反角
+ *   knee  → 膝外反角（片脚立位時は supportSide の脚のみ）
  *   ankle → 肩傾斜角
  *   trunk → 体幹側屈角（calculateTrunkAngle を流用: 垂直軸からの水平偏位）
+ *
+ * @param supportSide 片脚立位時に指定。省略時は左右平均。
  */
-export function calculateFrontalAngles(landmarks: PoseLandmarks) {
+export function calculateFrontalAngles(
+  landmarks: PoseLandmarks,
+  supportSide?: 'left' | 'right'
+) {
   return {
     hip:   calculatePelvicObliquity(landmarks),
-    knee:  calculateKneeValgus(landmarks),
+    knee:  calculateKneeValgus(landmarks, supportSide),
     ankle: calculateShoulderObliquity(landmarks),
     trunk: calculateTrunkAngle(landmarks),
   }

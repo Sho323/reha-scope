@@ -6,8 +6,10 @@ import { useAuthGuard } from '@/hooks/useAuthGuard'
 import { useSession, FrameData } from '@/context/SessionContext'
 import { analyzeVideo } from '@/lib/mediapipe'
 import { calculateAllAngles, calculateFrontalAngles, type Side } from '@/lib/angleCalc'
-import { calculateCenterOfGravity } from '@/lib/gravityCalc'
+import { calculateCenterOfGravity, calculateCogStability } from '@/lib/gravityCalc'
 import { detectValidity } from '@/lib/frameValidity'
+import { calcStandingMetrics, calcWalkingMetrics } from '@/lib/temporalMetrics'
+import type { StandingMetrics, WalkingMetrics } from '@/lib/temporalMetrics'
 import { generatePdf, generateFileName } from '@/lib/pdfExport'
 import { generateCsv, downloadCsv } from '@/lib/csvExport'
 import AngleGraph from '@/components/AngleGraph'
@@ -39,7 +41,7 @@ const MOVEMENT_LABELS: Record<string, string> = {
 
 export default function AnalysisPage() {
   useAuthGuard()
-  const { movementType, plane, videos, clinicalNote, setClinicalNote } = useSession()
+  const { movementType, plane, balanceType, walkingDistance, videos, clinicalNote, setClinicalNote } = useSession()
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>(plane === 'sagittal' ? 'sagittal' : 'frontal')
@@ -51,6 +53,11 @@ export default function AnalysisPage() {
   const [showSnapshot, setShowSnapshot] = useState(false)
   const [showOverlay, setShowOverlay] = useState(false)
   const [sagittalSide, setSagittalSide] = useState<Side>('auto')
+  // 片脚立位の支持脚（分析後も変更可能）
+  const [frontalSupportSide, setFrontalSupportSide] = useState<'left' | 'right' | undefined>(
+    balanceType === 'single_left' ? 'left' : balanceType === 'single_right' ? 'right' : undefined
+  )
+  const [fullscreenVideo, setFullscreenVideo] = useState<'before' | 'after' | null>(null)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [videoDims, setVideoDims] = useState({ w: 0, h: 0 })
@@ -157,7 +164,48 @@ export default function AnalysisPage() {
     }
   }, [sagittal, sagittalSide])
 
-  const currentPlaneData = activeTab === 'frontal' ? frontal : effectiveSagittal
+  // 支持脚変更時に前額面データを再計算（ランドマークを保持しているため高速）
+  const effectiveFrontal = useMemo(() => {
+    if (!frontal) return null
+    const recompute = (lm: PoseLandmarks, i: number) => {
+      const angles = lm.length > 0
+        ? calculateFrontalAngles(lm, frontalSupportSide)
+        : { hip: 0, knee: 0, ankle: 0, trunk: 0 }
+      const gravity = lm.length > 0 ? calculateCenterOfGravity(lm) : { x: 0.5, y: 0.5 }
+      return { frame: i, ...angles, gravityX: gravity.x, gravityY: gravity.y }
+    }
+    return {
+      ...frontal,
+      beforeData: frontal.beforeLandmarks.map(recompute),
+      afterData:  frontal.afterLandmarks.map(recompute),
+    }
+  }, [frontal, frontalSupportSide])
+
+  const currentPlaneData = activeTab === 'frontal' ? effectiveFrontal : effectiveSagittal
+
+  // 時間・効率指標（立ち上がり / 歩行のみ）
+  const temporalMetrics = useMemo(() => {
+    if (!currentPlaneData || status !== 'done') return null
+    const p = currentPlaneData.plane
+    const hasAfter = currentPlaneData.afterData.length > 0
+
+    if (movementType === 'standing') {
+      return {
+        type: 'standing' as const,
+        before: calcStandingMetrics(currentPlaneData.beforeData, currentPlaneData.beforeValidity, p),
+        after:  hasAfter ? calcStandingMetrics(currentPlaneData.afterData, currentPlaneData.afterValidity, p) : null,
+      }
+    }
+    if (movementType === 'walking') {
+      const dist = walkingDistance ?? undefined
+      return {
+        type: 'walking' as const,
+        before: calcWalkingMetrics(currentPlaneData.beforeData, currentPlaneData.beforeValidity, p, dist),
+        after:  hasAfter ? calcWalkingMetrics(currentPlaneData.afterData, currentPlaneData.afterValidity, p, dist) : null,
+      }
+    }
+    return null
+  }, [currentPlaneData, status, movementType, walkingDistance])
   const currentBeforeUrl = activeTab === 'frontal' ? videos.frontalBefore : videos.sagittalBefore
   const currentAfterUrl  = activeTab === 'frontal' ? videos.frontalAfter  : videos.sagittalAfter
 
@@ -192,15 +240,12 @@ export default function AnalysisPage() {
     setCurrentTime(time)
   }
 
-  const handleFullscreen = (ref: React.RefObject<HTMLDivElement | null>) => {
-    const el = ref.current
-    if (!el) return
-    if (!document.fullscreenElement) {
-      el.requestFullscreen()
-    } else {
-      document.exitFullscreen()
-    }
-  }
+  // Escape キーで全画面を閉じる
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreenVideo(null) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const handleExportPdf = async () => {
     if (!currentPlaneData) return
@@ -334,7 +379,10 @@ export default function AnalysisPage() {
         </div>
       </header>
 
-      <div id="analysis-content" ref={analysisRef} className="flex-1 p-4 space-y-4" data-testid="analysis-view">
+      <div id="analysis-content" ref={analysisRef} className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0" data-testid="analysis-view">
+
+        {/* ── 左パネル: 動画 ── */}
+        <div className="flex-shrink-0 md:w-[45%] overflow-y-auto p-3 flex flex-col gap-3">
         {/* Videos */}
         {currentBeforeUrl && (() => {
           const rawFrame = Math.round(currentTime * FPS)
@@ -342,12 +390,16 @@ export default function AnalysisPage() {
           const afterFrame  = Math.min(rawFrame, (currentPlaneData?.afterLandmarks.length  ?? 1) - 1)
           return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-              <div className={`grid ${currentAfterUrl ? 'grid-cols-2' : 'grid-cols-1 max-w-xl mx-auto'} gap-4 mb-3`}>
+              <div className={`grid ${currentAfterUrl ? 'grid-cols-2 md:grid-cols-1' : 'grid-cols-1'} gap-3 mb-3`}>
                 {/* Before */}
                 <div>
                   <div
                     ref={beforeContainerRef}
-                    className="relative border-2 border-[#3b82f6] rounded-xl overflow-hidden aspect-video bg-black group"
+                    className={`relative border-2 overflow-hidden bg-black group ${
+                      fullscreenVideo === 'before'
+                        ? 'fixed inset-0 z-50 border-0 rounded-none'
+                        : 'border-[#3b82f6] rounded-xl aspect-video'
+                    }`}
                   >
                     <div className="absolute top-2 left-2 z-10 bg-[#3b82f6] text-white text-xs font-bold px-2.5 py-1 rounded-md">BEFORE</div>
                     <video
@@ -368,22 +420,40 @@ export default function AnalysisPage() {
                     {showOverlay && currentPlaneData && (
                       <PoseOverlay
                         landmarks={currentPlaneData.beforeLandmarks[beforeFrame] ?? null}
-                        width={videoDims.w || beforeContainerRef.current?.getBoundingClientRect().width || 0}
-                        height={videoDims.h || beforeContainerRef.current?.getBoundingClientRect().height || 0}
+                        width={fullscreenVideo === 'before' ? window.innerWidth : (videoDims.w || beforeContainerRef.current?.getBoundingClientRect().width || 0)}
+                        height={fullscreenVideo === 'before' ? window.innerHeight : (videoDims.h || beforeContainerRef.current?.getBoundingClientRect().height || 0)}
                         videoNaturalWidth={beforeNaturalDims.w}
                         videoNaturalHeight={beforeNaturalDims.h}
                         plane={currentPlaneData.plane}
                       />
                     )}
+                    {/* フレーム表示トグル（全画面中もコンテナ内から操作可能） */}
+                    {status === 'done' && currentPlaneData && (
+                      <button
+                        onClick={() => setShowOverlay(v => !v)}
+                        className={`absolute bottom-2 left-2 z-10 px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity ${
+                          showOverlay ? 'bg-[#1e3a5f] text-white' : 'bg-black/60 text-white'
+                        } ${fullscreenVideo === 'before' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        フレーム {showOverlay ? 'ON' : 'OFF'}
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleFullscreen(beforeContainerRef)}
-                      className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/75 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="全画面表示"
+                      onClick={() => setFullscreenVideo(v => v === 'before' ? null : 'before')}
+                      className="absolute top-2 right-2 z-10 p-1.5 bg-black/50 hover:bg-black/75 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                      title={fullscreenVideo === 'before' ? '全画面を終了' : '全画面表示'}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
+                      {fullscreenVideo === 'before' ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M9 9L4 4m0 0v4m0-4h4M15 9l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4M15 15l5 5m0 0v-4m0 4h-4" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -393,7 +463,11 @@ export default function AnalysisPage() {
                   <div>
                     <div
                       ref={afterContainerRef}
-                      className="relative border-2 border-[#f97316] rounded-xl overflow-hidden aspect-video bg-black group"
+                      className={`relative border-2 overflow-hidden bg-black group ${
+                        fullscreenVideo === 'after'
+                          ? 'fixed inset-0 z-50 border-0 rounded-none'
+                          : 'border-[#f97316] rounded-xl aspect-video'
+                      }`}
                     >
                       <div className="absolute top-2 left-2 z-10 bg-[#f97316] text-white text-xs font-bold px-2.5 py-1 rounded-md">AFTER</div>
                       <video
@@ -410,22 +484,39 @@ export default function AnalysisPage() {
                       {showOverlay && currentPlaneData && (
                         <PoseOverlay
                           landmarks={currentPlaneData.afterLandmarks[afterFrame] ?? null}
-                          width={videoDims.w || afterContainerRef.current?.getBoundingClientRect().width || 0}
-                          height={videoDims.h || afterContainerRef.current?.getBoundingClientRect().height || 0}
+                          width={fullscreenVideo === 'after' ? window.innerWidth : (videoDims.w || afterContainerRef.current?.getBoundingClientRect().width || 0)}
+                          height={fullscreenVideo === 'after' ? window.innerHeight : (videoDims.h || afterContainerRef.current?.getBoundingClientRect().height || 0)}
                           videoNaturalWidth={afterNaturalDims.w}
                           videoNaturalHeight={afterNaturalDims.h}
                           plane={currentPlaneData.plane}
                         />
                       )}
+                      {status === 'done' && currentPlaneData && (
+                        <button
+                          onClick={() => setShowOverlay(v => !v)}
+                          className={`absolute bottom-2 left-2 z-10 px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity ${
+                            showOverlay ? 'bg-[#1e3a5f] text-white' : 'bg-black/60 text-white'
+                          } ${fullscreenVideo === 'after' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                        >
+                          フレーム {showOverlay ? 'ON' : 'OFF'}
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleFullscreen(afterContainerRef)}
-                        className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/75 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="全画面表示"
+                        onClick={() => setFullscreenVideo(v => v === 'after' ? null : 'after')}
+                        className="absolute top-2 right-2 z-10 p-1.5 bg-black/50 hover:bg-black/75 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={fullscreenVideo === 'after' ? '全画面を終了' : '全画面表示'}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                        </svg>
+                        {fullscreenVideo === 'after' ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M9 9L4 4m0 0v4m0-4h4M15 9l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4M15 15l5 5m0 0v-4m0 4h-4" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                          </svg>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -469,8 +560,8 @@ export default function AnalysisPage() {
 
               {/* Sub-controls row */}
               <div className="flex items-center justify-end gap-2 mt-2">
-                {/* フレーム表示トグル */}
-                {status === 'done' && currentPlaneData && (
+                {/* フレーム表示トグル（全画面中はコンテナ内ボタンで操作するため非表示） */}
+                {status === 'done' && currentPlaneData && !fullscreenVideo && (
                   <button
                     onClick={() => setShowOverlay(v => !v)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
@@ -494,6 +585,10 @@ export default function AnalysisPage() {
             </div>
           )
         })()}
+        </div>{/* end 左パネル */}
+
+        {/* ── 右パネル: 評価結果 ── */}
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 border-t md:border-t-0 md:border-l border-gray-200">
 
         {/* Graph + Gravity */}
         {currentPlaneData && status === 'done' && (
@@ -526,8 +621,34 @@ export default function AnalysisPage() {
               </div>
             )}
 
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-              <div className="flex-1 min-w-0">
+            {/* 前額面・バランス：支持脚セレクター */}
+            {activeTab === 'frontal' && movementType === 'balance' && (
+              <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b">
+                <span className="text-xs text-gray-500 font-medium flex-shrink-0">立位の種類：</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {([
+                    { value: undefined, label: '両脚立位' },
+                    { value: 'left',    label: '片脚（左支持）' },
+                    { value: 'right',   label: '片脚（右支持）' },
+                  ] as const).map(({ value, label }) => (
+                    <button
+                      key={value ?? 'bilateral'}
+                      onClick={() => setFrontalSupportSide(value)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition ${
+                        frontalSupportSide === value
+                          ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+                          : 'bg-white text-gray-500 border-gray-300 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
+              <div className="min-w-0">
                 <AngleGraph
                   beforeData={currentPlaneData.beforeData}
                   afterData={currentPlaneData.afterData}
@@ -538,7 +659,7 @@ export default function AnalysisPage() {
                   onSeek={handleSeek}
                 />
               </div>
-              <div className="w-full lg:w-72 lg:flex-shrink-0">
+              <div className="w-full">
                 <GravityPlot
                   beforeData={currentPlaneData.beforeData}
                   afterData={currentPlaneData.afterData}
@@ -550,8 +671,138 @@ export default function AnalysisPage() {
                 />
               </div>
             </div>
+
+            {/* バランス安定性指標 */}
+            {movementType === 'balance' && activeTab === 'frontal' && (() => {
+              const bStab = calculateCogStability(currentPlaneData.beforeData, currentPlaneData.beforeValidity)
+              const aStab = currentPlaneData.afterData.length > 0
+                ? calculateCogStability(currentPlaneData.afterData, currentPlaneData.afterValidity)
+                : null
+              const metrics = [
+                { label: '重心左右変動 (σ)', before: bStab.stdX, after: aStab?.stdX },
+                { label: '重心上下変動 (σ)', before: bStab.stdY, after: aStab?.stdY },
+                { label: '左右移動幅',        before: bStab.rangeX, after: aStab?.rangeX },
+              ]
+              return (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">バランス安定性指標</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {metrics.map(m => (
+                      <div key={m.label} className="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
+                        <div className="text-[10px] text-gray-400 mb-1 leading-tight">{m.label}</div>
+                        <div className="text-sm font-bold text-[#3b82f6]">{m.before.toFixed(3)}</div>
+                        {m.after !== undefined && m.after !== null && (
+                          <div className="text-xs text-[#f97316] font-semibold mt-0.5">{m.after.toFixed(3)}</div>
+                        )}
+                        <div className="text-[9px] text-gray-300 mt-0.5">before{m.after != null ? ' / after' : ''}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-300 mt-1.5">単位: 正規化座標（小さいほど安定）</p>
+                </div>
+              )
+            })()}
           </div>
         )}
+
+        {/* 時間・効率指標カード */}
+        {temporalMetrics && (() => {
+          const { type, before, after } = temporalMetrics
+          const hasAfter = after !== null
+
+          type Row = { label: string; before: string; after?: string; delta?: string; good?: 'lower' | 'higher' }
+
+          const fmt = (v: number | undefined, unit: string) =>
+            v !== undefined ? `${v}${unit}` : '–'
+
+          const deltaStr = (b: number | undefined, a: number | undefined, unit: string, good: 'lower' | 'higher') => {
+            if (b === undefined || a === undefined) return { str: '–', color: 'text-gray-300' }
+            const d = Math.round((a - b) * 100) / 100
+            const improved = good === 'lower' ? d < 0 : d > 0
+            const worsened = good === 'lower' ? d > 0 : d < 0
+            const sign = d > 0 ? '+' : ''
+            return {
+              str: `${sign}${d}${unit}`,
+              color: improved ? 'text-green-600' : worsened ? 'text-red-500' : 'text-gray-400',
+            }
+          }
+
+          let rows: Row[] = []
+
+          if (type === 'standing') {
+            const b = before as StandingMetrics
+            const a = after as StandingMetrics | null
+            const { str: dStr, color: dColor } = deltaStr(b.duration, a?.duration, '秒', 'lower')
+            rows = [
+              { label: '所要時間', before: fmt(b.duration, '秒'), after: a ? fmt(a.duration, '秒') : undefined, delta: dStr, good: 'lower' },
+            ]
+            if (b.phases) {
+              const { str: d1, color: c1 } = deltaStr(b.phases.leanForward, a?.phases?.leanForward, '秒', 'lower')
+              const { str: d2, color: c2 } = deltaStr(b.phases.rise, a?.phases?.rise, '秒', 'lower')
+              rows.push(
+                { label: '  前傾フェーズ', before: fmt(b.phases.leanForward, '秒'), after: a?.phases ? fmt(a.phases.leanForward, '秒') : undefined, delta: d1, good: 'lower' },
+                { label: '  離殿・伸展',   before: fmt(b.phases.rise, '秒'),        after: a?.phases ? fmt(a.phases.rise, '秒')        : undefined, delta: d2, good: 'lower' },
+              )
+              void c1; void c2
+            }
+            void dColor
+          } else {
+            const b = before as WalkingMetrics
+            const a = after as WalkingMetrics | null
+            rows = [
+              { label: '歩行時間',    before: fmt(b.duration, '秒'),    after: a ? fmt(a.duration, '秒')    : undefined, delta: deltaStr(b.duration,      a?.duration,      '秒',    'lower').str,  good: 'lower'  },
+              { label: '総歩数',      before: fmt(b.stepCount, '歩'),   after: a ? fmt(a.stepCount, '歩')   : undefined, delta: deltaStr(b.stepCount,     a?.stepCount,     '歩',    'higher').str, good: 'higher' },
+              { label: 'ケイデンス',  before: fmt(b.cadence, '歩/分'),  after: a ? fmt(a.cadence, '歩/分')  : undefined, delta: deltaStr(b.cadence,       a?.cadence,       '歩/分', 'higher').str, good: 'higher' },
+              { label: '左右対称性',  before: fmt(b.symmetryIndex, '%'), after: a ? fmt(a.symmetryIndex, '%') : undefined, delta: deltaStr(b.symmetryIndex, a?.symmetryIndex, '%',     'higher').str, good: 'higher' },
+            ]
+            if (b.speed !== undefined) {
+              rows.splice(1, 0, { label: '歩行速度', before: fmt(b.speed, 'm/s'), after: a?.speed !== undefined ? fmt(a.speed, 'm/s') : undefined, delta: deltaStr(b.speed, a?.speed, 'm/s', 'higher').str, good: 'higher' })
+            }
+            if (b.stepLength !== undefined) {
+              rows.push({ label: '歩幅', before: fmt(b.stepLength, 'cm'), after: a?.stepLength !== undefined ? fmt(a.stepLength, 'cm') : undefined, delta: deltaStr(b.stepLength, a?.stepLength, 'cm', 'higher').str, good: 'higher' })
+            }
+          }
+
+          return (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                {type === 'standing' ? '立ち上がり指標' : '歩行指標'}
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-400 border-b border-gray-100">
+                      <th className="text-left pb-2 font-medium">指標</th>
+                      <th className="text-right pb-2 font-medium text-[#3b82f6]">Before</th>
+                      {hasAfter && <th className="text-right pb-2 font-medium text-[#f97316]">After</th>}
+                      {hasAfter && <th className="text-right pb-2 font-medium">変化</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => {
+                      const { str: dStr, color: dColor } = row.good && row.delta
+                        ? deltaStr(
+                            parseFloat(row.before),
+                            row.after !== undefined ? parseFloat(row.after) : undefined,
+                            '',
+                            row.good
+                          )
+                        : { str: row.delta ?? '–', color: 'text-gray-400' }
+                      return (
+                        <tr key={i} className="border-b border-gray-50 last:border-0">
+                          <td className="py-2 text-gray-600 text-xs">{row.label}</td>
+                          <td className="py-2 text-right font-bold text-[#3b82f6]">{row.before}</td>
+                          {hasAfter && <td className="py-2 text-right font-bold text-[#f97316]">{row.after ?? '–'}</td>}
+                          {hasAfter && <td className={`py-2 text-right text-xs font-semibold ${dColor}`}>{row.delta ?? '–'}</td>}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* 所見入力欄 */}
         {status === 'done' && (
@@ -570,6 +821,7 @@ export default function AnalysisPage() {
         {status === 'idle' && (
           <div className="text-center text-gray-400 py-12">分析結果を待っています...</div>
         )}
+        </div>{/* end 右パネル */}
       </div>
 
       {/* Snapshot Modal */}

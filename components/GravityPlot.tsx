@@ -132,7 +132,7 @@ export default function GravityPlot({
       </div>
 
       {/* 統計カード */}
-      <div className={`grid ${hasAfter ? 'grid-cols-3' : 'grid-cols-1'} gap-2 mb-3`}>
+      <div className={`grid ${hasAfter ? 'grid-cols-3' : 'grid-cols-1'} gap-2 mb-2`}>
         {bStats && (
           <StatCard
             color="#3b82f6"
@@ -176,7 +176,7 @@ export default function GravityPlot({
           </span>
         </div>
       )}
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={140}>
         <LineChart
           data={chartData}
           margin={{ top: 4, right: 8, left: 0, bottom: 24 }}

@@ -1,16 +1,29 @@
 import type { PoseLandmarks } from './mediapipe'
 
 /**
- * 【前額面】カメラを向いているフレームを判定する。
+ * 【前額面・正面撮影】カメラに向いているフレームを判定する。
  * 鼻ランドマーク (index 0) の visibility が高い = 正面を向いている。
- * 方向転換で背中を向けると visibility が急落する。
+ *
+ * 正面から撮影することで方向転換問題を回避する前提のため、
+ * 時間的平滑化（前後5フレームの過半数判定）を行い、
+ * 自然な頭部動揺や瞬間的な検出ノイズによる誤除外を防ぐ。
  */
 export function detectFrontalValidity(allLandmarks: PoseLandmarks[]): boolean[] {
-  const THRESHOLD = 0.25
-  return allLandmarks.map(lm => {
+  const NOSE_THRESHOLD = 0.25
+  const SMOOTH_WIN = 5  // 前後5フレーム（15fps 換算で約 0.67 秒）
+
+  // 各フレームの生判定
+  const raw = allLandmarks.map(lm => {
     if (!lm || lm.length === 0) return false
     const nose = lm[0]
-    return (nose?.visibility ?? 0) > THRESHOLD
+    return (nose?.visibility ?? 0) > NOSE_THRESHOLD
+  })
+
+  // 時間平滑化：ウィンドウ内の過半数が有効なら有効
+  return raw.map((_, i) => {
+    const slice = raw.slice(Math.max(0, i - SMOOTH_WIN), Math.min(raw.length, i + SMOOTH_WIN + 1))
+    const validCount = slice.filter(Boolean).length
+    return validCount / slice.length > 0.5
   })
 }
 

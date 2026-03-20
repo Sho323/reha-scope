@@ -160,7 +160,7 @@ export default function AngleGraph({
     <div data-testid="angle-graph" className="w-full">
 
       {/* ヘッダー行 */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
           plane === 'frontal' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
         }`}>
@@ -187,12 +187,12 @@ export default function AngleGraph({
 
       {/* 関節タブ */}
       {!selectedJoint && (
-        <div className="flex gap-2 mb-4 flex-wrap justify-center">
+        <div className="flex gap-1.5 mb-2 flex-wrap justify-center">
           {joints.map(j => (
             <button
               key={j.key}
               onClick={() => setActiveJoint(j.key)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition border ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition border ${
                 activeJoint === j.key
                   ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
                   : 'bg-white text-gray-500 border-gray-300 hover:border-[#1e3a5f] hover:text-[#1e3a5f]'
@@ -205,7 +205,7 @@ export default function AngleGraph({
       )}
 
       {/* タイトル + 操作ヒント */}
-      <div className="flex items-start justify-between mb-3 gap-2 flex-wrap">
+      <div className="flex items-start justify-between mb-1 gap-2 flex-wrap">
         <div>
           <h3 className="text-sm font-bold text-gray-700">{jointMeta.label}</h3>
           <span className="text-[10px] text-gray-400 hidden sm:inline">（°） — {jointMeta.description}</span>
@@ -222,7 +222,7 @@ export default function AngleGraph({
       </div>
 
       {/* 統計カード（有効フレームのみ） */}
-      <div className={`grid ${hasAfter ? 'grid-cols-3' : 'grid-cols-1 max-w-xs'} gap-2 mb-4`}>
+      <div className={`grid ${hasAfter ? 'grid-cols-3' : 'grid-cols-1 max-w-xs'} gap-2 mb-2`}>
         <StatCard color="#3b82f6" label="Before 平均" value={bStats.avg} sub={`最大 ${bStats.max} / 最小 ${bStats.min}`} />
         {aStats && (
           <StatCard color="#f97316" label="After 平均" value={aStats.avg} sub={`最大 ${aStats.max} / 最小 ${aStats.min}`} />
@@ -239,7 +239,7 @@ export default function AngleGraph({
       </div>
 
       {/* グラフ */}
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={200}>
         <LineChart
           data={chartData}
           margin={{ top: 4, right: 16, left: 0, bottom: 24 }}
