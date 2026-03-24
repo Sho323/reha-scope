@@ -5,9 +5,19 @@ const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
   register: true,
+  reloadOnOnline: true,
   workboxOptions: {
     skipWaiting: true,
+    clientsClaim: true,
     runtimeCaching: [
+      {
+        urlPattern: ({ request }) => request.mode === 'navigate',
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'navigation-cache',
+          networkTimeoutSeconds: 10,
+        },
+      },
       {
         urlPattern: /\/mediapipe\/.*/i,
         handler: 'CacheFirst',
