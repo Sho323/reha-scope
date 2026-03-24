@@ -7,8 +7,6 @@ const withPWA = withPWAInit({
   register: true,
   workboxOptions: {
     skipWaiting: true,
-    navigateFallback: '/',
-    navigateFallbackDenylist: [/^\/api\//],
     runtimeCaching: [
       {
         urlPattern: /\/mediapipe\/.*/i,
@@ -23,18 +21,8 @@ const withPWA = withPWAInit({
 })
 
 const nextConfig: NextConfig = {
+  output: 'export',
   turbopack: {},
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-        ],
-      },
-    ]
-  },
 }
 
 export default withPWA(nextConfig)
