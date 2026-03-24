@@ -7,6 +7,8 @@ const withPWA = withPWAInit({
   register: true,
   workboxOptions: {
     skipWaiting: true,
+    navigateFallback: '/',
+    navigateFallbackDenylist: [/^\/api\//],
     runtimeCaching: [
       {
         urlPattern: /\/mediapipe\/.*/i,
