@@ -1,13 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function PasswordGate() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,7 +27,7 @@ export default function PasswordGate() {
     if (hashHex === process.env.NEXT_PUBLIC_PASSWORD_HASH) {
       localStorage.setItem('reha_auth', 'true')
       document.cookie = 'reha_auth=true; path=/; SameSite=Strict'
-      router.push('/home')
+      window.location.href = '/home'
     } else {
       setError('パスワードが違います')
       setLoading(false)

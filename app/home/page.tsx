@@ -2,7 +2,6 @@
 
 import { useAuthGuard } from '@/hooks/useAuthGuard'
 import { useSession, MovementType } from '@/context/SessionContext'
-import { useRouter } from 'next/navigation'
 
 const MOVEMENTS: { type: MovementType; label: string; desc: string; icon: React.ReactNode }[] = [
   {
@@ -40,11 +39,10 @@ const MOVEMENTS: { type: MovementType; label: string; desc: string; icon: React.
 export default function HomePage() {
   useAuthGuard()
   const { setMovementType } = useSession()
-  const router = useRouter()
 
   const handleSelect = (type: MovementType) => {
     setMovementType(type)
-    router.push('/input')
+    window.location.href = '/input'
   }
 
   return (

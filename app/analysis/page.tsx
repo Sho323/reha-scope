@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuthGuard } from '@/hooks/useAuthGuard'
 import { useSession, FrameData } from '@/context/SessionContext'
 import { analyzeVideo } from '@/lib/mediapipe'
@@ -42,7 +41,6 @@ const MOVEMENT_LABELS: Record<string, string> = {
 export default function AnalysisPage() {
   useAuthGuard()
   const { movementType, plane, balanceType, walkingDistance, videos, clinicalNote, setClinicalNote } = useSession()
-  const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<ActiveTab>(plane === 'sagittal' ? 'sagittal' : 'frontal')
   const [status, setStatus] = useState<AnalysisStatus>('idle')
@@ -304,7 +302,7 @@ export default function AnalysisPage() {
     return (
       <div className="min-h-screen bg-[#f5f7fa] flex flex-col items-center justify-center gap-4">
         <div className="text-[#ef4444] text-lg font-bold">{error}</div>
-        <button onClick={() => router.push('/input')} className="bg-[#1e3a5f] text-white px-6 py-3 rounded-xl">
+        <button onClick={() => window.location.href = '/input'} className="bg-[#1e3a5f] text-white px-6 py-3 rounded-xl">
           動画を選び直す
         </button>
       </div>
@@ -322,7 +320,7 @@ export default function AnalysisPage() {
       <header className="bg-white border-b border-gray-200 px-3 py-0 flex items-center justify-between gap-2">
         {/* Logo + back */}
         <button
-          onClick={() => router.push('/input')}
+          onClick={() => window.location.href = '/input'}
           className="flex items-center gap-2 py-3 flex-shrink-0"
         >
           <div className="w-7 h-7 bg-[#1e3a5f] rounded-full flex items-center justify-center">
