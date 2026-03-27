@@ -1,6 +1,10 @@
 import type { NextConfig } from 'next'
 import withPWAInit from '@ducanh2912/next-pwa'
 
+// デプロイのたびに変わるリビジョン
+// → workbox がHTMLページを毎回再キャッシュするよう強制する
+const buildRevision = String(Date.now())
+
 const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
@@ -12,23 +16,19 @@ const withPWA = withPWAInit({
     skipWaiting: true,
     clientsClaim: true,
     // woff2フォント全件とmapファイルをプリキャッシュから除外
-    // （フォントはHTTPキャッシュが担当、mediapipeはruntimeCachingで遅延キャッシュ）
     exclude: [
       /\.woff2$/,
       /\.map$/,
       /^manifest.*\.js$/,
     ],
-    // index.html をプリキャッシュに明示登録（navigateFallback の参照先として必須）
-    // revision: null = SWが再インストールされるたびに最新版を取得する
+    // 全ページHTMLを直接プリキャッシュ
+    // navigateFallback より確実：precacheAndRoute が URL 完全一致で返す
     additionalManifestEntries: [
-      { url: '/index.html', revision: null },
+      { url: '/',         revision: buildRevision },
+      { url: '/home',     revision: buildRevision },
+      { url: '/input',    revision: buildRevision },
+      { url: '/analysis', revision: buildRevision },
     ],
-    // オフライン時にナビゲーションが失敗した場合のフォールバック先
-    // output: 'export' + 全ページ 'use client' のため、index.html から
-    // Next.js クライアントルーターが正しいページを描画する
-    navigateFallback: '/index.html',
-    // _next/ 静的アセットへのリクエストはフォールバック対象外
-    navigateFallbackDenylist: [/^\/_next\//, /^\/api\//],
     runtimeCaching: [
       {
         urlPattern: /\/mediapipe\/.*/i,
