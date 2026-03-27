@@ -54,6 +54,8 @@ interface SessionContextValue extends SessionState {
 
 const SessionContext = createContext<SessionContextValue | null>(null)
 
+const SESSION_KEY = 'reha_session'
+
 const initialState: SessionState = {
   movementType: null,
   plane: null,
@@ -64,23 +66,46 @@ const initialState: SessionState = {
   clinicalNote: '',
 }
 
+function loadState(): SessionState {
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      return { ...initialState, ...parsed, analysisData: {} }
+    }
+  } catch {}
+  return initialState
+}
+
+function saveState(state: SessionState) {
+  try {
+    // analysisData は大容量のため保存対象外
+    const { analysisData: _, ...rest } = state
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(rest))
+  } catch {}
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>(initialState)
+  const [state, setState] = useState<SessionState>(loadState)
+
+  // 状態変更のたびに sessionStorage へ保存（ページ遷移後も復元できるよう）
+  const update = (updater: (s: SessionState) => SessionState) =>
+    setState(s => { const next = updater(s); saveState(next); return next })
 
   const setMovementType = (t: MovementType) =>
-    setState(s => ({ ...s, movementType: t, balanceType: null }))
+    update(s => ({ ...s, movementType: t, balanceType: null }))
 
   const setPlane = (p: PlaneType) =>
-    setState(s => ({ ...s, plane: p }))
+    update(s => ({ ...s, plane: p }))
 
   const setBalanceType = (t: BalanceType) =>
-    setState(s => ({ ...s, balanceType: t }))
+    update(s => ({ ...s, balanceType: t }))
 
   const setWalkingDistance = (d: number | null) =>
-    setState(s => ({ ...s, walkingDistance: d }))
+    update(s => ({ ...s, walkingDistance: d }))
 
   const setVideos = (v: VideoSet) =>
-    setState(s => ({ ...s, videos: v }))
+    update(s => ({ ...s, videos: v }))
 
   const setAnalysisData = (plane: 'frontal' | 'sagittal', data: AnalysisData) =>
     setState(s => ({
@@ -89,9 +114,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }))
 
   const setClinicalNote = (note: string) =>
-    setState(s => ({ ...s, clinicalNote: note }))
+    update(s => ({ ...s, clinicalNote: note }))
 
-  const reset = () => setState(initialState)
+  const reset = () => {
+    sessionStorage.removeItem(SESSION_KEY)
+    setState(initialState)
+  }
 
   return (
     <SessionContext.Provider
