@@ -18,15 +18,18 @@ const withPWA = withPWAInit({
       /\.map$/,
       /^manifest.*\.js$/,
     ],
+    // index.html をプリキャッシュに明示登録（navigateFallback の参照先として必須）
+    // revision: null = SWが再インストールされるたびに最新版を取得する
+    additionalManifestEntries: [
+      { url: '/index.html', revision: null },
+    ],
+    // オフライン時にナビゲーションが失敗した場合のフォールバック先
+    // output: 'export' + 全ページ 'use client' のため、index.html から
+    // Next.js クライアントルーターが正しいページを描画する
+    navigateFallback: '/index.html',
+    // _next/ 静的アセットへのリクエストはフォールバック対象外
+    navigateFallbackDenylist: [/^\/_next\//, /^\/api\//],
     runtimeCaching: [
-      {
-        urlPattern: ({ request }) => request.mode === 'navigate',
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'navigation-cache',
-          networkTimeoutSeconds: 10,
-        },
-      },
       {
         urlPattern: /\/mediapipe\/.*/i,
         handler: 'CacheFirst',
