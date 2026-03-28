@@ -10,28 +10,34 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   reloadOnOnline: false,
-  // mediapipe (24MB) とスクリーン画像をプリキャッシュから除外
-  publicExcludes: ['!mediapipe/**', '!screen*.png'],
+  // スクリーン画像のみプリキャッシュから除外（mediapipeはadditionalManifestEntriesで明示キャッシュ）
+  publicExcludes: ['!screen*.png'],
   workboxOptions: {
     skipWaiting: true,
     clientsClaim: true,
     // mapファイルとmanifest.jsのみプリキャッシュから除外
-    // ※woff2はCacheFirstでランタイムキャッシュするため除外しない
     exclude: [
       /\.map$/,
       /^manifest.*\.js$/,
     ],
-    // 全ページHTMLを直接プリキャッシュ
-    // navigateFallback より確実：precacheAndRoute が URL 完全一致で返す
+    // 全ページHTMLとMediaPipeファイルを明示的にプリキャッシュ
+    // → SWインストール時に確実にキャッシュされるためオフライン分析が可能になる
     additionalManifestEntries: [
       { url: '/',         revision: buildRevision },
       { url: '/home',     revision: buildRevision },
       { url: '/input',    revision: buildRevision },
       { url: '/analysis', revision: buildRevision },
+      // MediaPipe本体・モデル・WASMファイル（オフライン分析に必須）
+      { url: '/mediapipe/vision_bundle.mjs',                     revision: '1' },
+      { url: '/mediapipe/pose_landmarker_lite.task',             revision: '1' },
+      { url: '/mediapipe/wasm/vision_wasm_internal.js',          revision: '1' },
+      { url: '/mediapipe/wasm/vision_wasm_internal.wasm',        revision: '1' },
+      { url: '/mediapipe/wasm/vision_wasm_nosimd_internal.js',   revision: '1' },
+      { url: '/mediapipe/wasm/vision_wasm_nosimd_internal.wasm', revision: '1' },
     ],
     runtimeCaching: [
       {
-        // MediaPipe WASMモデル（大容量）: CacheFirstでオフライン対応
+        // MediaPipe WASMモデル（大容量）: CacheFirstでオフライン確実対応
         urlPattern: /\/mediapipe\/.*/i,
         handler: 'CacheFirst',
         options: {
