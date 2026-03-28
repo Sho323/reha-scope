@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthGuard } from '@/hooks/useAuthGuard'
 import { useSession, PlaneType, VideoSet, MovementType, BalanceType } from '@/context/SessionContext'
 import VideoInputArea from '@/components/VideoInputArea'
@@ -25,6 +26,7 @@ const BALANCE_TYPES: { value: BalanceType; label: string }[] = [
 
 export default function InputPage() {
   useAuthGuard()
+  const router = useRouter()
   const { plane, setPlane, setVideos, videos, movementType, setMovementType, balanceType, setBalanceType, walkingDistance, setWalkingDistance } = useSession()
   const [error, setError] = useState('')
 
@@ -56,7 +58,7 @@ export default function InputPage() {
 
   const handleStart = () => {
     if (!isReady()) { setError('Before の動画を選択してください'); return }
-    window.location.href = '/analysis'
+    router.push('/analysis')
   }
 
   return (
@@ -64,7 +66,7 @@ export default function InputPage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
         {/* Logo */}
-        <button onClick={() => { window.location.href = '/home' }} className="flex items-center gap-2.5">
+        <button onClick={() => router.push('/home')} className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-[#1e3a5f] rounded-full flex items-center justify-center">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

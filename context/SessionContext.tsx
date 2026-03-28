@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 export type MovementType = 'standing' | 'walking' | 'balance'
 export type PlaneType = 'frontal' | 'sagittal' | 'both'
@@ -71,7 +71,8 @@ function loadState(): SessionState {
     const saved = sessionStorage.getItem(SESSION_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
-      return { ...initialState, ...parsed, analysisData: {} }
+      // 古いセッションにvideos(Blob URL)が残っている場合は無視して初期化
+      return { ...initialState, ...parsed, analysisData: {}, videos: {} }
     }
   } catch {}
   return initialState
@@ -80,13 +81,19 @@ function loadState(): SessionState {
 function saveState(state: SessionState) {
   try {
     // analysisData は大容量のため保存対象外
-    const { analysisData: _, ...rest } = state
+    // videos(Blob URL) はリロード後に無効になるため保存対象外
+    const { analysisData: _, videos: __, ...rest } = state
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(rest))
   } catch {}
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>(loadState)
+  const [state, setState] = useState<SessionState>(initialState)
+
+  // クライアントサイドでのみ、マウント時にsessionStorageから状態を復元（Hydration Mismatch防止）
+  useEffect(() => {
+    setState(loadState())
+  }, [])
 
   // 状態変更のたびに sessionStorage へ保存（ページ遷移後も復元できるよう）
   const update = (updater: (s: SessionState) => SessionState) =>
