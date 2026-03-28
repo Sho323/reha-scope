@@ -23,17 +23,14 @@ const withPWA = withPWAInit({
     // 全ページHTMLとMediaPipeファイルを明示的にプリキャッシュ
     // → SWインストール時に確実にキャッシュされるためオフライン分析が可能になる
     additionalManifestEntries: [
+      // HTMLページのみプリキャッシュ（軽量→SW インストール成功率が高い）
+      // MediaPipe(24MB)はプリキャッシュに含めない。SW インストール時に
+      // 大容量ダウンロードが発生すると失敗してページすら開けなくなるため。
+      // MediaPipe は runtimeCaching(CacheFirst) でオンライン初回アクセス時にキャッシュする。
       { url: '/',         revision: buildRevision },
       { url: '/home',     revision: buildRevision },
       { url: '/input',    revision: buildRevision },
       { url: '/analysis', revision: buildRevision },
-      // MediaPipe本体・モデル・WASMファイル（オフライン分析に必須）
-      { url: '/mediapipe/vision_bundle.mjs',                     revision: '1' },
-      { url: '/mediapipe/pose_landmarker_lite.task',             revision: '1' },
-      { url: '/mediapipe/wasm/vision_wasm_internal.js',          revision: '1' },
-      { url: '/mediapipe/wasm/vision_wasm_internal.wasm',        revision: '1' },
-      { url: '/mediapipe/wasm/vision_wasm_nosimd_internal.js',   revision: '1' },
-      { url: '/mediapipe/wasm/vision_wasm_nosimd_internal.wasm', revision: '1' },
     ],
     // プリキャッシュにマッチしないナビゲーションリクエストへのフォールバック
     // → オフライン時に「ページを開けません」エラーを防ぐ
