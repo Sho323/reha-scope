@@ -69,6 +69,8 @@ export default function AnalysisPage() {
   const beforeContainerRef = useRef<HTMLDivElement>(null)
   const afterContainerRef = useRef<HTMLDivElement>(null)
   const analysisRef = useRef<HTMLDivElement>(null)
+  // SessionContext の hydration タイミングに関わらず分析を1回だけ実行するためのガード
+  const analysisStartedRef = useRef(false)
 
   const analyzePlane = async (
     beforeUrl: string,
@@ -119,18 +121,31 @@ export default function AnalysisPage() {
   }, [status])
 
   useEffect(() => {
-    if (!plane || !videos) return
+    // 二重起動防止
+    if (analysisStartedRef.current) return
+    // plane が null = SessionContext がまだ hydration 中なので待つ
+    if (!plane) return
+
+    // 動画が存在しない（ページリロードで blob URL が消えた）場合は /input に戻す
+    const hasFrontal = (plane === 'frontal' || plane === 'both') && !!videos?.frontalBefore
+    const hasSagittal = (plane === 'sagittal' || plane === 'both') && !!videos?.sagittalBefore
+    if (!hasFrontal && !hasSagittal) {
+      router.replace('/input')
+      return
+    }
+
+    analysisStartedRef.current = true
 
     const run = async () => {
       setStatus('analyzing')
       setProgress(0)
       try {
-        if ((plane === 'frontal' || plane === 'both') && videos.frontalBefore) {
-          const result = await analyzePlane(videos.frontalBefore, videos.frontalAfter, 'frontal')
+        if (hasFrontal) {
+          const result = await analyzePlane(videos.frontalBefore!, videos.frontalAfter, 'frontal')
           setFrontal(result)
         }
-        if ((plane === 'sagittal' || plane === 'both') && videos.sagittalBefore) {
-          const result = await analyzePlane(videos.sagittalBefore, videos.sagittalAfter, 'sagittal')
+        if (hasSagittal) {
+          const result = await analyzePlane(videos.sagittalBefore!, videos.sagittalAfter, 'sagittal')
           setSagittal(result)
         }
         setStatus('done')
@@ -144,7 +159,7 @@ export default function AnalysisPage() {
 
     run()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [plane, videos])
 
   // 側の選択に応じて矢状面データを再計算（ランドマークは保持済みなので高速）
   // 'auto' の場合はフレームごとに visibility を比較して動的に側を選択する
