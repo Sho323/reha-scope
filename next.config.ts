@@ -35,6 +35,15 @@ const withPWA = withPWAInit({
       { url: '/mediapipe/wasm/vision_wasm_nosimd_internal.js',   revision: '1' },
       { url: '/mediapipe/wasm/vision_wasm_nosimd_internal.wasm', revision: '1' },
     ],
+    // プリキャッシュにマッチしないナビゲーションリクエストへのフォールバック
+    // → オフライン時に「ページを開けません」エラーを防ぐ
+    navigateFallback: '/',
+    // _next静的アセット・MediaPipe・拡張子付きファイルはフォールバック対象外
+    navigateFallbackDenylist: [
+      /^\/_next\//,
+      /\/mediapipe\//,
+      /\.[a-zA-Z0-9]{1,5}$/,
+    ],
     runtimeCaching: [
       {
         // MediaPipe WASMモデル（大容量）: CacheFirstでオフライン確実対応

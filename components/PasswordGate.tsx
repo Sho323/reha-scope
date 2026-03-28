@@ -1,11 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function PasswordGate() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
+
+  // 認証済みの場合は /home へ自動リダイレクト
+  // navigateFallback で '/' が返された場合にも正しくホームへ進む
+  useEffect(() => {
+    if (localStorage.getItem('reha_auth')) {
+      router.replace('/home')
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
