@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthGuard } from '@/hooks/useAuthGuard'
 import { useSession, FrameData } from '@/context/SessionContext'
 import { analyzeVideo } from '@/lib/mediapipe'
+import { getVideoBlobUrl } from '@/lib/videoDB'
 import { calculateAllAngles, calculateFrontalAngles, type Side } from '@/lib/angleCalc'
 import { calculateCenterOfGravity, calculateCogStability } from '@/lib/gravityCalc'
 import { detectValidity } from '@/lib/frameValidity'
@@ -57,6 +58,8 @@ export default function AnalysisPage() {
   const [frontalSupportSide, setFrontalSupportSide] = useState<'left' | 'right' | undefined>(
     balanceType === 'single_left' ? 'left' : balanceType === 'single_right' ? 'right' : undefined
   )
+  // ページリロードで blob URL が消えた場合に IndexedDB から復元した URL を保持
+  const [resolvedVideos, setResolvedVideos] = useState(videos)
   const [fullscreenVideo, setFullscreenVideo] = useState<'before' | 'after' | null>(null)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -126,26 +129,41 @@ export default function AnalysisPage() {
     // plane が null = SessionContext がまだ hydration 中なので待つ
     if (!plane) return
 
-    // 動画が存在しない（ページリロードで blob URL が消えた）場合は /input に戻す
-    const hasFrontal = (plane === 'frontal' || plane === 'both') && !!videos?.frontalBefore
-    const hasSagittal = (plane === 'sagittal' || plane === 'both') && !!videos?.sagittalBefore
-    if (!hasFrontal && !hasSagittal) {
-      router.replace('/input')
-      return
-    }
-
     analysisStartedRef.current = true
 
     const run = async () => {
+      // SessionContext の blob URL を使う。なければ IndexedDB から復元（ページリロード対応）
+      const tryRestore = async (key: string, existing?: string) => {
+        if (existing) return existing
+        return await getVideoBlobUrl(key).catch(() => null) ?? undefined
+      }
+
+      const ev = {
+        frontalBefore:  await tryRestore('frontalBefore',  videos?.frontalBefore),
+        frontalAfter:   await tryRestore('frontalAfter',   videos?.frontalAfter),
+        sagittalBefore: await tryRestore('sagittalBefore', videos?.sagittalBefore),
+        sagittalAfter:  await tryRestore('sagittalAfter',  videos?.sagittalAfter),
+      }
+
+      const hasFrontal  = (plane === 'frontal'  || plane === 'both') && !!ev.frontalBefore
+      const hasSagittal = (plane === 'sagittal' || plane === 'both') && !!ev.sagittalBefore
+
+      if (!hasFrontal && !hasSagittal) {
+        // IndexedDB にも動画がない（セッション完全リセット）→ /input に戻す
+        router.replace('/input')
+        return
+      }
+
+      setResolvedVideos(ev)
       setStatus('analyzing')
       setProgress(0)
       try {
         if (hasFrontal) {
-          const result = await analyzePlane(videos.frontalBefore!, videos.frontalAfter, 'frontal')
+          const result = await analyzePlane(ev.frontalBefore!, ev.frontalAfter, 'frontal')
           setFrontal(result)
         }
         if (hasSagittal) {
-          const result = await analyzePlane(videos.sagittalBefore!, videos.sagittalAfter, 'sagittal')
+          const result = await analyzePlane(ev.sagittalBefore!, ev.sagittalAfter, 'sagittal')
           setSagittal(result)
         }
         setStatus('done')
@@ -221,8 +239,8 @@ export default function AnalysisPage() {
     }
     return null
   }, [currentPlaneData, status, movementType, walkingDistance])
-  const currentBeforeUrl = activeTab === 'frontal' ? videos.frontalBefore : videos.sagittalBefore
-  const currentAfterUrl  = activeTab === 'frontal' ? videos.frontalAfter  : videos.sagittalAfter
+  const currentBeforeUrl = activeTab === 'frontal' ? resolvedVideos.frontalBefore : resolvedVideos.sagittalBefore
+  const currentAfterUrl  = activeTab === 'frontal' ? resolvedVideos.frontalAfter  : resolvedVideos.sagittalAfter
 
   const handlePlayPause = () => {
     if (!beforeVideoRef.current) return

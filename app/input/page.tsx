@@ -233,12 +233,14 @@ export default function InputPage() {
                     desc="基準となる動作を録画するか、既存の動画ファイルをアップロードしてください。"
                     videoUrl={videos.frontalBefore}
                     onVideoReady={url => updateVideo('frontalBefore', url)}
+                    storageKey="frontalBefore"
                   />
                   <VideoCard
                     title="After"
                     desc="治療・介入後の動作を録画して比較分析に使用します。"
                     videoUrl={videos.frontalAfter}
                     onVideoReady={url => updateVideo('frontalAfter', url)}
+                    storageKey="frontalAfter"
                   />
                 </div>
               </div>
@@ -254,12 +256,14 @@ export default function InputPage() {
                     desc="基準となる動作を録画するか、既存の動画ファイルをアップロードしてください。"
                     videoUrl={videos.sagittalBefore}
                     onVideoReady={url => updateVideo('sagittalBefore', url)}
+                    storageKey="sagittalBefore"
                   />
                   <VideoCard
                     title="After"
                     desc="治療・介入後の動作を録画して比較分析に使用します。"
                     videoUrl={videos.sagittalAfter}
                     onVideoReady={url => updateVideo('sagittalAfter', url)}
+                    storageKey="sagittalAfter"
                   />
                 </div>
               </div>
@@ -294,11 +298,13 @@ function VideoCard({
   desc,
   videoUrl,
   onVideoReady,
+  storageKey,
 }: {
   title: string
   desc: string
   videoUrl?: string
   onVideoReady: (url: string) => void
+  storageKey: string
 }) {
   return (
     <div className="bg-white border-2 border-dashed border-gray-300 rounded-2xl p-8 flex flex-col items-center text-center gap-4">
@@ -322,6 +328,7 @@ function VideoCard({
           borderColor={title === 'Before' ? 'blue' : 'orange'}
           videoUrl={videoUrl}
           onVideoReady={onVideoReady}
+          storageKey={storageKey}
           compact
         />
       </div>

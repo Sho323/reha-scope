@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { saveVideoBlob } from '@/lib/videoDB'
 
 interface VideoInputAreaProps {
   label: string
   borderColor: 'blue' | 'orange'
   onVideoReady: (url: string) => void
   videoUrl?: string
+  /** IndexedDB に保存するキー（指定時はページリロード後も復元可能） */
+  storageKey?: string
   /** ボタンのみ表示（プレビュー・ラベル非表示） */
   compact?: boolean
 }
@@ -16,6 +19,7 @@ export default function VideoInputArea({
   borderColor,
   onVideoReady,
   videoUrl,
+  storageKey,
   compact = false,
 }: VideoInputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -44,6 +48,7 @@ export default function VideoInputArea({
       return
     }
     const url = URL.createObjectURL(file)
+    if (storageKey) saveVideoBlob(storageKey, file).catch(console.error)
     onVideoReady(url)
     // 同じファイルを再選択できるようリセット
     e.target.value = ''
@@ -70,6 +75,7 @@ export default function VideoInputArea({
       mr.onstop = () => {
         const blob = new Blob(chunks, { type: mimeType || 'video/mp4' })
         const url = URL.createObjectURL(blob)
+        if (storageKey) saveVideoBlob(storageKey, blob).catch(console.error)
         onVideoReady(url)
         if (videoRef.current) videoRef.current.srcObject = null
       }
