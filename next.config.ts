@@ -15,27 +15,26 @@ const withPWA = withPWAInit({
   workboxOptions: {
     skipWaiting: true,
     clientsClaim: true,
-    // mapファイルとmanifest.jsのみプリキャッシュから除外
+    // フォント(7.6MB×131ファイル)・mapファイル・manifest.jsをプリキャッシュから除外
+    // フォントはSWインストール時ではなく初回アクセス時にruntimeCachingでキャッシュする
+    // → SWインストールを軽量化してモバイルでのインストール成功率を大幅に向上させる
+    // 注意: workbox-webpack-plugin の exclude は asset.name（先頭 / なし）でマッチする
     exclude: [
       /\.map$/,
       /^manifest.*\.js$/,
+      /\.woff2$/,  // 全woff2フォントをプリキャッシュから除外（runtimeCachingで対応）
     ],
-    // 全ページHTMLとMediaPipeファイルを明示的にプリキャッシュ
-    // → SWインストール時に確実にキャッシュされるためオフライン分析が可能になる
+    // 4つのHTMLページのみ明示的にプリキャッシュ
+    // JSチャンク(1.3MB)・CSS(160KB)はworkboxが自動でプリキャッシュ
+    // MediaPipe(24MB)はプリキャッシュに含めない→runtimeCachingで初回アクセス時にキャッシュ
     additionalManifestEntries: [
-      // HTMLページのみプリキャッシュ（軽量→SW インストール成功率が高い）
-      // MediaPipe(24MB)はプリキャッシュに含めない。SW インストール時に
-      // 大容量ダウンロードが発生すると失敗してページすら開けなくなるため。
-      // MediaPipe は runtimeCaching(CacheFirst) でオンライン初回アクセス時にキャッシュする。
       { url: '/',         revision: buildRevision },
       { url: '/home',     revision: buildRevision },
       { url: '/input',    revision: buildRevision },
       { url: '/analysis', revision: buildRevision },
     ],
     // プリキャッシュにマッチしないナビゲーションリクエストへのフォールバック
-    // → オフライン時に「ページを開けません」エラーを防ぐ
     navigateFallback: '/',
-    // _next静的アセット・MediaPipe・拡張子付きファイルはフォールバック対象外
     navigateFallbackDenylist: [
       /^\/_next\//,
       /\/mediapipe\//,
@@ -43,22 +42,22 @@ const withPWA = withPWAInit({
     ],
     runtimeCaching: [
       {
+        // Next.js静的メディア（フォント・画像）: CacheFirst
+        // プリキャッシュから除外した分をランタイムでキャッシュ
+        urlPattern: /\/_next\/static\/media\//i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'static-media-cache',
+          expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 365 },
+        },
+      },
+      {
         // MediaPipe WASMモデル（大容量）: CacheFirstでオフライン確実対応
         urlPattern: /\/mediapipe\/.*/i,
         handler: 'CacheFirst',
         options: {
           cacheName: 'mediapipe-cache',
           expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 },
-        },
-      },
-      {
-        // Next.js が生成するフォントファイル（_next/static/media/*.woff2）
-        // CacheFirst: 一度キャッシュしたらオフラインでも利用可能
-        urlPattern: /\/_next\/static\/media\/.*\.woff2$/i,
-        handler: 'CacheFirst',
-        options: {
-          cacheName: 'font-cache',
-          expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
         },
       },
     ],
