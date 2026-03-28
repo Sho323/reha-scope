@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { clearAllVideoBlobs } from '@/lib/videoDB'
 
 export type MovementType = 'standing' | 'walking' | 'balance'
 export type PlaneType = 'frontal' | 'sagittal' | 'both'
@@ -55,6 +56,10 @@ interface SessionContextValue extends SessionState {
 const SessionContext = createContext<SessionContextValue | null>(null)
 
 const SESSION_KEY = 'reha_session'
+// アプリが生きているセッションかどうかを sessionStorage で管理
+// sessionStorage はアプリ終了（kill）で消えるがバックグラウンドでは残る
+// → アプリ再起動時に IndexedDB の動画をクリアするためのフラグ
+const SESSION_ALIVE_KEY = 'reha_session_alive'
 
 const initialState: SessionState = {
   movementType: null,
@@ -91,7 +96,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>(initialState)
 
   // クライアントサイドでのみ、マウント時にsessionStorageから状態を復元（Hydration Mismatch防止）
+  // アプリが再起動（kill後の再開）された場合はIndexedDBの動画をクリアする
   useEffect(() => {
+    const isAlive = sessionStorage.getItem(SESSION_ALIVE_KEY)
+    if (!isAlive) {
+      // 新規セッション（アプリがkillされていた）→ IndexedDB の動画を削除
+      clearAllVideoBlobs().catch(() => {})
+      sessionStorage.setItem(SESSION_ALIVE_KEY, '1')
+    }
     setState(loadState())
   }, [])
 

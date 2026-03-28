@@ -32,6 +32,17 @@ export async function saveVideoBlob(key: string, blob: Blob): Promise<void> {
   })
 }
 
+/** IndexedDB の全動画 Blob を削除する（アプリ再起動時のクリーンアップ用） */
+export async function clearAllVideoBlobs(): Promise<void> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite')
+    tx.objectStore(STORE_NAME).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 /** 指定キーの Blob を取得して blob URL を返す。存在しなければ null */
 export async function getVideoBlobUrl(key: string): Promise<string | null> {
   const db = await getDB()
