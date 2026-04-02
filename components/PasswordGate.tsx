@@ -58,6 +58,11 @@ export default function PasswordGate() {
           <p className="text-sm text-gray-500 mt-1">Motion Analysis Tool</p>
         </div>
 
+        {/* Demo notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-sm text-blue-700">
+          デモ用パスワード：<span className="font-mono font-semibold">demo2026</span>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
