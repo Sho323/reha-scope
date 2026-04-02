@@ -31,17 +31,11 @@
 
 ## スクリーンショット
 
-### ポーズオーバーレイ：骨格検出 + 関節角度の前後比較
-<img src="public/screen1.png" width="800" alt="ポーズオーバーレイ - 骨格検出と関節角度の前後比較">
-
-### 解析画面：同期再生 + 関節角度グラフ + 重心偏位
-<img src="public/screen.png" width="800" alt="解析画面 - 分割再生・関節角度グラフ・COG偏位">
+### 解析画面：関節角度グラフ + 重心変位（Before/After 比較）
+<img src="public/screen_analysis.png" width="800" alt="解析画面 - 股関節屈曲角・重心上下変位のBefore/After比較グラフ">
 
 ### 動画入力：治療前後の撮影・アップロード
-<img src="public/screen2.png" width="800" alt="動画入力画面 - Before/After と正面/矢状面を指定">
-
-### ホーム：評価動作の選択
-<img src="public/screen3.png" width="800" alt="ホーム画面 - 立ち上がり・歩行・バランスを選択">
+<img src="public/screen_input.png" width="800" alt="動画入力画面 - 動作種類・撮影面・Before/After の指定">
 
 ---
 
@@ -80,16 +74,26 @@
 
 ## 技術スタック
 
-| 技術 | 用途・選定理由 |
-|------|--------------|
-| **Next.js 15 / React 19 / TypeScript 5** | フロントエンド。静的エクスポートでバックエンドなし運用が可能、将来的なサーバー追加にも対応できる拡張性を確保 |
-| **Tailwind CSS 4** | スタイリング |
-| **MediaPipe Pose（Web WASM）** | ブラウザ内で骨格推定を完結できる唯一の選択肢。外部サーバーへの通信が発生しないため病院のセキュリティ要件に合致する |
-| **Recharts** | 関節角度の時系列グラフ描画 |
-| **jsPDF + html2canvas** | PDF レポート生成 |
-| **next-pwa（Workbox）+ IndexedDB** | PWA・オフライン対応。iOS Safari の Blob URL 解放問題への対処も兼ねる |
-| **Vercel** | CI/CD・CDN・SSL を個人開発で即座に揃えられる現実的な選択 |
-| **Jest 30 + React Testing Library** | テスト |
+```
+Frontend    Next.js 15 (App Router) / React 19 / TypeScript 5 / Tailwind CSS 4
+AI / ML     MediaPipe Pose (Web WASM) — ブラウザ内で骨格推定
+Viz         Recharts — 関節角度の時系列グラフ
+Export      jsPDF + html2canvas（PDF）/ Custom CSV exporter
+PWA         @ducanh2912/next-pwa (Workbox) + IndexedDB (videoDB)
+Deploy      Vercel（静的エクスポート、バックエンドサーバーなし）
+Test        Jest 30 + React Testing Library
+```
+
+---
+
+## 技術選定の背景
+
+| 技術 | 選定理由 |
+|------|---------|
+| **MediaPipe Pose（WASM）** | ブラウザ内で骨格推定を完結できる唯一の選択肢。TensorFlow.js より精度が高く、外部サーバーへの通信が発生しないため病院のセキュリティ要件に合致する |
+| **Next.js（静的エクスポート）** | バックエンドなしで運用でき、将来的なサーバー追加にも対応できる拡張性を確保 |
+| **Vercel** | 個人開発で CI/CD・CDN・SSL を即座に揃えられる現実的な選択 |
+| **IndexedDB** | iOS Safari が Blob URL をページ遷移後に解放する問題への対処。患者動画をブラウザ内 DB に保存し、セッション終了時に自動削除することでプライバシーも確保 |
 
 ---
 
@@ -201,8 +205,7 @@ PT が患者に向き合う時間を大幅に増やせる。しかし LLM は海
 ---
 
 一方で、医療 DX の需要は確実に高まっている。  
-2026年度の診療報酬改定では、AI・ICT ツールの導入により看護職員や診療補助職員の人員配置基準に柔軟性が認められるようになった。  
-人手不足でも DX に取り組めば高い点数を維持できる仕組みであり、病院側がツール導入を検討する制度的な後押しになっている。  
+2026年度の診療報酬改定では AI 活用・DX 化が加算として点数化され始めた。  
 現場のニーズと制度的な追い風は、どちらも揃っている。
 
 個人開発でここまで来たからこそ、**次は組織の中でやるべきだ**という確信がある。
