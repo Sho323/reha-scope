@@ -31,8 +31,11 @@
 
 ## スクリーンショット
 
-### 解析画面：関節角度グラフ + 重心変位（Before/After 比較）
-<img src="public/screen_analysis.png" width="800" alt="解析画面 - 股関節屈曲角・重心上下変位のBefore/After比較グラフ">
+### 関節角度グラフ：Before/After 数値比較
+<img src="public/screen_graph.png" width="800" alt="股関節屈曲角・重心上下変位のBefore/After比較グラフ">
+
+### 解析画面：骨格オーバーレイ動画 + グラフ
+<img src="public/screen_analysis_full.png" width="800" alt="解析画面 - 骨格検出動画と関節角度グラフの同時表示">
 
 ### 動画入力：治療前後の撮影・アップロード
 <img src="public/screen_input.png" width="800" alt="動画入力画面 - 動作種類・撮影面・Before/After の指定">
