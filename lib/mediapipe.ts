@@ -53,6 +53,24 @@ async function getPoseLandmarker(): Promise<any> {
 // ─── 公開 API ─────────────────────────────────────────────
 
 /**
+ * MediaPipe の主要ファイルが SW キャッシュに存在するか確認する。
+ * オフライン時に分析が可能かどうかの事前チェックに使用する。
+ */
+export async function isMediaPipeCached(): Promise<boolean> {
+  // window にシングルトンが既にある場合はキャッシュ不要
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((window as any)[SINGLETON_KEY]) return true
+  if (!('caches' in window)) return false
+  try {
+    const cache = await caches.open('mediapipe-cache')
+    const resp = await cache.match('/mediapipe/vision_bundle.mjs')
+    return !!resp
+  } catch {
+    return false
+  }
+}
+
+/**
  * 動画の全フレームを PoseLandmarker で解析してランドマーク配列を返す。
  * フレームごとに canvas に描画してから同期検出（IMAGE mode）。
  */
