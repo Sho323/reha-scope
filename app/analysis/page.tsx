@@ -154,6 +154,11 @@ export default function AnalysisPage() {
         return
       }
 
+      // plane が hydration 前に null だったため activeTab が 'frontal' に固定されている場合を補正
+      if (!hasFrontal && hasSagittal) {
+        setActiveTab('sagittal')
+      }
+
       // オフライン時に MediaPipe が未キャッシュなら解析前に早期エラー
       if (!navigator.onLine) {
         const cached = await isMediaPipeCached()
